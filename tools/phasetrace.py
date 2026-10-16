@@ -34,14 +34,26 @@ rx70 = re.compile(r'^\s*([0-7]{5}): \*70 \S+\s+\(=([0-7]{16})\)')
 # Executed instructions. `dispak -t -t` also prints indented
 # "      AAAAA: store ..." lines for memory writes; they must not count.
 rxpc = re.compile(r'^\s*([0-7]{5})[:;] (?!store )')
+# Э62 unit<<9|offset moves a unit's zone origin (АЛГ does it for unit 40).
+# Until Э50 0112 sets it back, unit 40 zones are not catalog zones.
+rx62 = re.compile(r'^\s*[0-7]{5}: \*62 ([0-7]+)')
+rx50 = re.compile(r'^\s*[0-7]{5}: \*50 112 ')
+catalog40 = True
 for line in sys.stdin:
+    m = rx62.match(line)
+    if m and int(m.group(1), 8) >> 9 == 0o40:
+        catalog40 = False
+        continue
+    if rx50.match(line):
+        catalog40 = True
+        continue
     m = rx70.match(line)
     if m:
         d = m.group(2)
         read, p = d[2] == '1', int(d[4:6], 8)
         unit, z = int(d[10:12], 8), int(d[12:16], 8)
         if read:
-            if unit == 0o40 and z in zones:
+            if unit == 0o40 and catalog40 and z in zones:
                 page[p] = zones[z]
                 first.setdefault(zones[z][0], {})[zones[z][1]] = p
             else:
