@@ -53,8 +53,11 @@ notes as routines are understood. `build/` is reproducible, so don't edit it.
 
 - Images are in `/usr/local/share/besm6` (2148, 2248). Private or modified
   copies go in `~/.besm6` (e.g. 2249, below).
-- `pult.b6` (from pasauto-re's `pult2.b6`) maps `лент 40(2248-1000)` and
-  `лент 57(2248-1000)`, so unit 40 zone N = 2248 zone 01000+N. It reads unit
+- `pult.b6` (from pasauto-re's `pult2.b6`) maps `лент 40(2250-1000)` and
+  `лент 57(2250-1000)`, so unit 40 zone N = zone 01000+N. 2250 is
+  `~/.besm6/2250`: 2248 with the patches in `patches-2248.txt`, built by
+  `make vol` (`tools/patchvol.py`, which checks each old word). `make
+  images` and the listings still use the original 2248. It reads unit
   40 zone 040 into page 0 and jumps to 040. Sessions are fed on stdin, e.g.
   `арх вася,50,100`, `пас нов`, `конец`.
 - Zone 01000 on both volumes holds the same catalog. Every code entry is
@@ -84,7 +87,7 @@ with a zero word. `tools/catalog.py` prints it.
 | КТЛБИБ | 037 | 1 | library catalog (data) |
 | ПУСК | 040 | 1 | **page 0**, boot and resident kernel |
 | НАБЛ | 041 | 1 | read into page 1, copied via drum 27 track 37 to **page 27 (056000)**: command loop (terminal Э71 at 56514/56550/56053) |
-| АЛГ | 042 | 2 | `алг`: zone 042 → page 1, 043 → page 33 |
+| АЛГ | 042 | 2 | `алг`: zone 042 → page 1, 043 → page 33; loads and patches the ALGOL translator, see «АЛГ» below |
 | СЛУЖ | 044 | 1 | archive-catalog commands `з`/`зап`, `ктл`, `упор`, `искл`; page 0, assembly; see «СЛУЖ» below |
 | СПИС | 045 | 2 | `с`: zone 045 → page 0, entry 10; `р`: zone 046 → page 1, entry 2010 |
 | АВТПАК | 047 | 1 | |
@@ -436,6 +439,67 @@ volume 2399, a copy of 2345, deleted afterwards):
 
 `sessions/служ.txt` only runs the read-only forms, because pult.b6 has the
 real 2345 as unit 50.
+
+## АЛГ (zones 042-043)
+
+`алг` reads zone 042 into page 1 and starts at 02012. That code reads
+zone 043 into page 33 (66000) and parses an optional mode word (02020-02046).
+It then loads an ALGOL translator into page 0 and redirects its card input
+from Э60 to ПУЛЬТ.
+
+1. **Which volume.** `Э50 105` (dispak: volume number of a unit, in BCD) on
+   unit 40 is compared with 02220 = 020150, i.e. 2068 (02133). If unit 40 is
+   2068, it sets unit 57's offset (`Э62 057302`); otherwise unit 40's
+   (`Э62 040302`). The test repeats at 02151, and zone 015 is read from that
+   unit (02202 = u57 z015, 02203 = u40 z015).
+2. **Э60 check.** 02156-02161 search words 0200-0377 of the loaded image
+   for the exact word 02224 = `уиа -30(М1); э60 4000` (card input into
+   04000). If it is found, it is replaced with Э75 by 02204 = `уиа -30(М1);
+   пв 66020(М16)` (АЛГ's own input routine). The `э60 0` after it (02225)
+   is also replaced. Then 76032 and the exit 76002 are hooked (02205, 02210),
+   74000-74001 are cleared, and АЛГ jumps to 040. If the word isn't found,
+   it prints «ПЛОХО С Э60» (02227) and leaves through 66343. That path puts
+   the offset back with `Э50 112` / `Э62 0n7000` and then runs into page 0.
+3. **Why it fails here.** On 2248 and 2148 the translator, with that word
+   at 0302, is zone **0315**, i.e. 0300 + 015. dispak takes the whole low 9
+   bits of `Э62 040302` as the new zone offset (extra.c, default case), so
+   «zone 015» becomes 2248 zone 0317. The word isn't there, so «ПЛОХО С
+   Э60», and the exit path then runs through page 0 into 02000:
+   ЗАПРЕЩ.КОМАНДА, АВОСТ 22. This is a dispak bug: on a "29 MB" volume
+   the lowest 5 bits of the Э62 offset are ignored, so 0302 means 0300
+   (TODO.md). 2250 patches АЛГ to `Э62 040300` / `057300` (02135, 02137;
+   `patches-2248.txt`), and the check passes.
+4. **Next blocker: drum 22.** The translator (2248 zone 0315, run at 040)
+   starts with `Э70 46` = `0014010000220034`, i.e. it reads unit 22 zone 034
+   into page 1 (later also zone 035, at 0374/0070). At 042-045 it copies that
+   page with Э75 to 76400-… and jumps to 05471. Unit 22 is one of dispak's
+   internal drums, which start empty: `ЛЕНТ` cards only accept units
+   030-067, and nothing on 2248 writes drum 22 zone 034. So the translator
+   runs off into zeros and stops at 56000 (ЗАПРЕЩ.КОМАНДА, АВОСТ 22).
+   The 4 in `0014` is the physical-exchange bit (dispak extra.c: `uil.i_opcode
+   & 4`). dispak maps physical drum D track T to zone T + (D - N) * 040 of
+   the first `ЛЕНТ` unit, at that unit's current offset, where `ФИЗО МБN`
+   names the base drum. The native ALGOL job
+   (`~/git/besm6/dispak/tests/algol-besm6/algol-besm6.b6`) has `ФИЗО МБ21`
+   with `ЛЕНТ 57(2148-300)` first, and the scratch `ЛЕНТ 30(1С)`. So pult.b6
+   has `физо мб21` (drum 22 track 034 → zone 0300 + 040 + 034 = 0374, which
+   holds the translator's next part) and `лент 30(1С)`. The translator
+   writes unit 30 zone 1 (00544), and СЛУЖ reads the edit buffer from unit
+   30 zone 1 (СЛУЖ 0726).
+5. **Current state.** `алг` now runs the ALGOL translator. With nothing to
+   compile it reports «СТРОКА 2 В ЯЗЫКЕ НЕТ СИМВОЛА _161 / _160» and then
+   stops at 04261 (АВОСТ 24). `алг NAME` reads archive file NAME, and
+   `алг буф` the buffer (02052-02100). A program written with pasauto-re's
+   `togost` into a scratch archive file compiles up to `_end`. It then gets
+   errors on the bytes after the text (0172 end, a `$` line, or a line of
+   backquotes didn't end it) and stops at 02011 (АВОСТ 24). In АЛГ's card
+   routine (66020-66146), 0175 becomes 0174, and 0127 (`◇`, `$`) at the
+   start of a line starts a control line (66037-66071). How a ПУЛЬТ ALGOL
+   text must end, and how text gets into the buffer, is still open: lines
+   typed after `сис алг` did not reach it.
+6. **`тел`** does not change any of this. The page-1 instruction trace of
+   the `алг` session (844 steps) and the output are identical with and
+   without `тел`.
 
 ## ДАЙ (zone 005)
 

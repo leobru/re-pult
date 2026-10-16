@@ -1,0 +1,8 @@
+# Patches applied to 2248 to make ~/.besm6/2250, the volume pult.b6 boots.
+# zone word old new (12 hex digits = one word)
+#
+# АЛГ (zone 01042): set the ALGOL translator's zone offset to 0300, not 0302.
+# On a "29 MB" volume the low 5 bits of the Э62 offset are ignored, but
+# dispak uses them (TODO.md), so 0302 would read zone 0317 instead of 0315.
+1042 0135 0940c2032000 0940c0032000  мода 40302 → мода 40300; э62
+1042 0137 095ec2032000 095ec0032000  мода 57302 → мода 57300; э62

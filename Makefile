@@ -7,6 +7,8 @@
 #   make listings   build/<NAME>.lst for every image that executed in a session,
 #                   disassembled at the address it runs at
 #   make diff       catalog entries that differ between 2148 and 2248
+#   make vol        ~/.besm6/2250: 2248 with patches-2248.txt applied; pult.b6
+#                   boots from it (listings still come from the original 2248)
 #
 # syms/<NAME>.sym (disbesm6 symbol table) is used when present.
 
@@ -14,6 +16,7 @@ DIS      ?= $(HOME)/git/leobru/dispak-tools/disbesm6
 VOL      ?= 2248
 SESSIONS := $(basename $(notdir $(wildcard sessions/*.txt)))
 STAMPS   := $(SESSIONS:%=build/t-%/.done)
+PVOL     := $(HOME)/.besm6/2250
 
 all: listings
 
@@ -22,8 +25,12 @@ images/%/.done: tools/extract.py tools/gost.py
 	tools/extract.py $* > images-$*.txt
 	touch $@
 
+vol: $(PVOL)
+$(PVOL): patches-2248.txt tools/patchvol.py
+	tools/patchvol.py patches-2248.txt 2248 $@
+
 traces: $(STAMPS)
-build/t-%/.done: sessions/%.txt pult.b6 tools/phasetrace.py images/$(VOL)/.done
+build/t-%/.done: sessions/%.txt pult.b6 $(PVOL) tools/phasetrace.py images/$(VOL)/.done
 	rm -rf build/t-$* $(HOME)/.besm6/input_queue; mkdir -p build
 	timeout 300 dispak -t -t -q pult.b6 < $< 2>&1 | \
 	    tools/phasetrace.py build/t-$* images-$(VOL).txt > build/t-$*.summary
@@ -49,7 +56,7 @@ diff: images
 clean:
 	rm -rf build
 
-.PHONY: all images traces listings diff clean
+.PHONY: all images vol traces listings diff clean
 .PRECIOUS: build/%.trace
 # dispak sessions share ~/.besm6/input_queue
 .NOTPARALLEL:
