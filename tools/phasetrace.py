@@ -31,7 +31,9 @@ store = {}                                # (unit, zone) -> (name, index)
 seen = {}                                 # name -> {page: set(offsets)}
 first = {}                                # name -> {index: page}
 rx70 = re.compile(r'^\s*([0-7]{5}): \*70 \S+\s+\(=([0-7]{16})\)')
-rxpc = re.compile(r'^\s*([0-7]{5})[:;] ')
+# Executed instructions. `dispak -t -t` also prints indented
+# "      AAAAA: store ..." lines for memory writes; they must not count.
+rxpc = re.compile(r'^\s*([0-7]{5})[:;] (?!store )')
 for line in sys.stdin:
     m = rx70.match(line)
     if m:
