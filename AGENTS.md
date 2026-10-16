@@ -80,7 +80,7 @@ with a zero word. `tools/catalog.py` prints it.
 | ПУСК | 040 | 1 | **page 0**, boot and resident kernel |
 | НАБЛ | 041 | 1 | read into page 1, copied via drum 27 track 37 to **page 27 (056000)**: command loop (terminal Э71 at 56514/56550/56053) |
 | АЛГ | 042 | 2 | `алг`: zone 042 → page 1, 043 → page 33 |
-| СЛУЖ | 044 | 1 | page 0, entries 10-13: `з`/`зап` (10), `ктл` (11), `упор` (12), `искл` (13) |
+| СЛУЖ | 044 | 1 | archive-catalog commands `з`/`зап`, `ктл`, `упор`, `искл`; page 0, assembly; see «СЛУЖ» below |
 | СПИС | 045 | 2 | `с`: zone 045 → page 0, entry 10; `р`: zone 046 → page 1, entry 2010 |
 | АВТПАК | 047 | 1 | |
 | ПАСК | 050 | 1 | ПАСКАЛ (Pascal-autocode driver), page 33 (066000) |
@@ -267,6 +267,64 @@ prints «ХУZ .I»: name not found, with no tape read. Without `арх`, 2248 z
 `OVERLAY OT 27.06.85 M3 <<-->>`, and it is not a valid catalog. That is
 where «СТОИТ…МЛ…» comes from. `ктл`, `упор` and `искл` (СЛУЖ) read the same
 two places into page 3.
+
+## СЛУЖ (zone 044)
+
+Hand-written assembly with the same page-0 layout as ПУСК: words 0-7 are
+the same header (`выпр 70707(17)`, …, 6 = `пб (3)`), and 010-013 are an
+entry vector. НАБЛ reloads page 0 with СЛУЖ and jumps to:
+
+| entry | target | commands |
+|---|---|---|
+| 010 | 0411 | `з`, `зап` |
+| 011 | 040 | `ктл` |
+| 012 | 0316 | `упор` |
+| 013 | 0215 | `искл` |
+
+All four work on the catalog of the attached archive (see «Name lookup in
+the archive catalog»). Page 3 (06000-06377) holds the catalog: pairs of
+(name, start << 24 | length) from 06001, with the number of words in
+06377. Two copies of it are used:
+
+- **МЛ**, the tape copy: НАБЛ 57776 (set by `арх`; default u40 z0240) plus
+  page 3, in cells 022 (read) and 023 (write). In the test: u50 z0100.
+- **МБ**, the drum copy: drum 27 zone 036, in cells 024 (read) and 025
+  (write).
+
+Each command reads the drum copy first. It also reads the tape copy when
+НАБЛ 57770 ≠ 06000 (that state word is not understood). On the way out it
+restores НАБЛ 57767/57770 and returns through 56010.
+
+| command | what it does |
+|---|---|
+| `ктл`, `ктл мб` | lists the drum copy: « ИМЯ  НАЧАЛО ДЛИНА», then one line per entry (name, start zone, length) |
+| `ктл мл` | lists the tape copy |
+| `ктл млмб` | tape → drum, «СЧ КТЛ С МЛ» |
+| `ктл мбмл` | drum → tape, «ЗП КТЛ НА МЛ» (at 0106-0111: МБ, МЛ, МЛМБ, МБМЛ) |
+| `з NAME(N)` | allocates N zones for NAME after the last entry and prints «МСВ NAME Н=start Д=N» (МСВ = массив, an archive entry; Н = начало, Д = длина). If the name exists, its entry is reused; it moves to the end if it grows. Then it writes the edit buffer into the zones (0766-0773) and the catalog to both copies |
+| `з NAME` | as above, with the length taken from the buffer (0700-0761, a second pass through 0512) |
+| `искл A,B,…` | removes up to 7 names, shifting the entries down and decreasing 06377. Only the drum copy is written |
+| `упор` | compacts the archive: it renumbers the entries from zone 1, moves their zones (Э70 loop 0352-0364, descriptors 0401/0402), and writes both copies |
+
+Errors: «АРХИВ ПЕРЕПОЛНЕН. ЗАПИСЬ НЕВОЗМОЖНА» (0622, archive full), «  КТЛ
+ПЕРЕПОЛНЕН…» (0620, catalog page full), «НЕПР. ИМЯ ЛЕНТЫ:» (no archive
+attached), «НЕТ КТЛ НА МБ».
+
+The format of the saved text depends on the current system (НАБЛ 57767):
+0512 looks it up in АЛГ, АВТ, ЛИСП (0642-0644) and picks the end-of-text
+codes at 0645-0654. The name БУФ (0660) is special.
+
+Observed on a scratch archive (`дай новарх,50,100,вася`, `арх вася,50,100`,
+volume 2399, a copy of 2345, deleted afterwards):
+- `з аа(5)` → «МСВ АА Н=001 Д=005», and `зап вв(2)` → `Н=007 Д=002`.
+- `з бб` (empty buffer) prints «АРХИВ ПЕРЕПОЛНЕН…» but still creates a
+  one-zone entry at 006.
+- `з нов(30)` is refused, and `з аа` for an existing name prints the same
+  message.
+- After `искл аа`, `упор` moved ББ from 006 to 001 and ВВ from 007 to 002.
+
+`sessions/служ.txt` only runs the read-only forms, because pult.b6 has the
+real 2345 as unit 50.
 
 ## ДАЙ (zone 005)
 
