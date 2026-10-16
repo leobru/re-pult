@@ -17,6 +17,8 @@ VOL      ?= 2248
 SESSIONS := $(basename $(notdir $(wildcard sessions/*.txt)))
 STAMPS   := $(SESSIONS:%=build/t-%/.done)
 PVOL     := $(HOME)/.besm6/2250
+# 7.25 MB geometry: offsets set by Э50 0112 (ФОРТ) are then taken as given
+DISPAKFLAGS ?= --725
 
 all: listings
 
@@ -32,7 +34,7 @@ $(PVOL): patches-2248.txt tools/patchvol.py
 traces: $(STAMPS)
 build/t-%/.done: sessions/%.txt pult.b6 $(PVOL) tools/phasetrace.py images/$(VOL)/.done
 	rm -rf build/t-$* $(HOME)/.besm6/input_queue; mkdir -p build
-	timeout 300 dispak -t -t -q pult.b6 < $< 2>&1 | \
+	timeout 300 dispak $(DISPAKFLAGS) -t -t -q pult.b6 < $< 2>&1 | \
 	    tools/phasetrace.py build/t-$* images-$(VOL).txt > build/t-$*.summary
 	touch $@
 
