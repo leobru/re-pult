@@ -69,7 +69,7 @@ with a zero word. `tools/catalog.py` prints it.
 | ПУЛЬТ | 002 | 1 | `пульт` via БАВТ: page 0, then ЗГЛВК → page 1; prints «ШИФР  ЛЕНТ» |
 | АЦПУК | 003 | 1 | `ацпу` via БАВТ: page 36, then drum 27 zone 0137 → page 36 |
 | ПУЛЬТФ | 004 | 1 | |
-| ДАЙ | 005 | 1 | `дай` command, page 0 |
+| ДАЙ | 005 | 1 | `дай SUB args`, page 0; assembly, no АДСИС; see «ДАЙ» below |
 | АДСИС | 006 | 1 | Pascal runtime library, page 36 (074000); the compiler's ИА=74000 table |
 | РЕЗРВ1 | 007 | 22 | pool of overlays (zone 015 runs in page 0 for `алг`); per-zone pieces `РЕЗРВ1+k` |
 | СЕРВИС | 031 | 3 | `сервис`, `сер`, Pascal program, pages 0-2 (+АДСИС) |
@@ -84,7 +84,7 @@ with a zero word. `tools/catalog.py` prints it.
 | СПИС | 045 | 2 | `с`: zone 045 → page 0, entry 10; `р`: zone 046 → page 1, entry 2010 |
 | АВТПАК | 047 | 1 | |
 | ПАСК | 050 | 1 | ПАСКАЛ (Pascal-autocode driver), page 33 (066000) |
-| БАВТ | 051 | 1 | page 33. Runs first for `пас` and for any name ПУЛЬТ itself doesn't know (then reads unit 40 zone 0240 into page 34) |
+| БАВТ | 051 | 1 | page 33. Runs first for `пас` and for any name ПУЛЬТ itself doesn't know; such names are looked up in the archive catalog (see «Name lookup in the archive catalog») |
 | ОТЛ | 052 | 3 | `о`: zones 052-054 → pages 24-26 (НАБЛ 56342 adds an offset to the zone) |
 | ЛЕС | 055 | 3 | `лес`, Pascal program, pages 0-2 |
 | ЧИСТКА | 060 | 3 | `чистка`, Pascal program, pages 0-2 |
@@ -205,9 +205,8 @@ and an unknown name loads БАВТ.
 
 БАВТ's (name, word) table is at 66074-66177; 66200 ends it. The second
 word is the handler's offset from 066000 (checked for the СТАТИС names:
-0344 → 66344, etc.). A name in neither this table nor the ПУСК/НАБЛ tables goes to
-the unit 40 zone 0240 library: БАВТ reads it into page 34 and prints
-«СТОИТ.176МЛ.176» for `xyz`. The results below are from `tools/probe.sh`
+0344 → 66344, etc.). A name in neither this table nor the ПУСК/НАБЛ tables
+is looked up in the archive catalog through 76006 (next section). The results below are from `tools/probe.sh`
 with no arguments and no `арх`. Every name first reloads ПУСК and loads БАВТ.
 
 | name | loads | output with no arguments |
@@ -240,10 +239,81 @@ So `мавт`, `конкат`, `диспак`, `форм`, `пп`, `ппн`, `п
 `порц` are handled inside БАВТ. The others load a catalog entry or an
 outside zone.
 
+## Name lookup in the archive catalog (76006 → 76203)
+
+Unit 40 zone 0240 is not a library. It is the default **archive catalog**.
+БАВТ (and ПАСКАЛ) find a program in the user's archive by calling 76006
+with the parameter block at 77770-77775 (77771 = the name, 77770 = a check
+word). The routine at 76203:
+
+1. 76237 reads drum 27 zone 036, the current archive catalog, into page 34
+   (070000).
+2. If 070000 (the catalog's first word) ≠ 77770, it reads the catalog from
+   the descriptor in НАБЛ cell 57776 (default `0010 0000 0040 0240` = unit 40
+   zone 0240) and writes it back to drum 27 zone 036 (76241-76242).
+3. If the word still doesn't match, it stores both words in the message at
+   76312-76317 and returns. The caller prints it: «СТОИТ <catalog's word>
+   МЛ <expected>». dispak shows only «СТОИТ.176МЛ.176», because the
+   message stops at the 0377 bytes in 76313.
+4. Otherwise it searches page 34 for the name (76250-76257). If found, it
+   reads the program's zones with Э70 (76260-76277) and returns to 1(М11).
+   If not found, it returns to (М11) with the name in 76321.
+
+`арх NAME,U,Z` reads that archive's catalog (unit U zone Z, here unit 50
+zone 0100) into page 3 and writes it to drum 27 zone 036 (ПУСК 01176-01160).
+After that the drum copy matches, and an unknown command such as `xyz`
+prints «ХУZ .I»: name not found, with no tape read. Without `арх`, 2248 zone
+01240 is read. It holds only 14 words: some code, then the ASCII text
+`OVERLAY OT 27.06.85 M3 <<-->>`, and it is not a valid catalog. That is
+where «СТОИТ…МЛ…» comes from. `ктл`, `упор` and `искл` (СЛУЖ) read the same
+two places into page 3.
+
+## ДАЙ (zone 005)
+
+Hand-written assembly, not Pascal:
+
+- БАВТ starts it without loading АДСИС. Every Pascal image (ЛЕС, ЧИСТКА,
+  СТАТИС, …) gets АДСИС in page 36.
+- Nothing in it refers to 074000-075777 (the runtime).
+- It has none of the compiler's code shape. Subroutines are called by
+  register linkage (`пв X(М3)`, `пв X(М16)`), it patches its own code with
+  Э75 (cells 0262-0263), and data is mixed into the code. The command table
+  is pairs of a name and a `пб`.
+- Its messages are GOST, except the ITM texts at 0154-0205, which are
+  messages for the batch job that ЛЕНЛЕН generates.
+
+`syms/ДАЙ.sym` names the entry points. `sessions/dai.txt` runs the
+subcommands that don't crash.
+
+START (07) sets М16 = 76002 for the return. It looks up the first argument,
+1(М17) (ПУЛЬТ's parsed command line: 2(М17)… are the next arguments), in
+the (name, `пб`) pairs at 016-053 (sentinel 054). A miss prints «НЕ ДАМ».
+The probe outputs below are with no arguments.
+
+| sub | entry | what the code does | probe |
+|---|---|---|---|
+| `паузу N` | 061 | a loop around `Э50 7700` (A = 01000, an 80 ms × 01000 sleep) driven by the argument | nothing |
+| `кодго X` | 070 | replaces the low byte of НАБЛ cell 57536 with the argument (one byte, else «НЕТ»), then writes page 27 back to drum 27 zone 037 | — |
+| `вреш N` | 077 | `Э63 2` with the argument (default 060): set the time limit | АВОСТ 3 (dispak lacks Э63 2) |
+| `разр` | 0104 | `Э61 0110` on the passport-like block at 0110-0134, then tests a bit of 0115 | «ЕСТЬ» |
+| `деш` | 0327 | picks a table by the current system (НАБЛ 57767: АВТ or КОД) and XORs it into a code table | КОНТРОЛЬ КОМАНДЫ |
+| `лент U ОПЦ` | 0404 | tape settings: ИМЯ (Э50 0105/0113), ЗП, СЧ, СДВИГ (Э50 0112), ПЕРЕИМ and СМЕНАП (Э72) | «НЕТ» |
+| `шифр` | 0477 | prints the account id (Э50 0100) in octal | «412020000000» |
+| `напнап` | 0507 | copies zones: builds Э70 descriptors 0272/0273 from the arguments and loops at 0230-0257 | « 1345 ЗОН С 0 . 1375 НА 1320 . 1334», «НЕТ» |
+| `ленлен` | 0527 | tape-to-tape copy as a batch job: passport at 0110-0134 (ШИФР, ТРАКТ, ЛЕНТ, ВРЕМ, ВХОД, ЛИСТ, ЕКОНЕЦ at 0275), account id from Э50 0100 | «НЕТ» |
+| `пампам` | 0713 | like `напнап` | « 1320 С 0 НА 1375», «НЕТ» |
+| `ктлбиб` | 0754 | not analysed | «НЕТ» |
+| `сравн` | 0776 | compares zones (texts «НЕ РАВНО», ЗОНА, АДРЕС at 01043-01046) | ends in the archive-catalog lookup, «СТОИТ.176МЛ.176» |
+| `ацпу` | 01053 | not analysed | «НЕТ» |
+| `новарх` | 01065 | creates an archive, e.g. `дай новарх,50,100,вася` in pasauto-re's pas.sh | «НЕТ» |
+| `форт` | 01225 | reads zone 005 (ДАЙ itself) into page 36 twice, then unit 21 zone 0201 → page 1 | АВОСТ 24 |
+
+None of the probes changed 2345 (unit 50, the only writable volume).
+
 ## СТАТИС (zone 063)
 
-Decompiled, but not fully understood or annotated, in
-`~/git/besm6/pasauto-re/statis.pas`. The main program dispatches on the
+Decompiled and annotated in `statis.pas` (from pasauto-re, which has the
+plain decompiled version). The main program dispatches on the
 global `i` (its first variable), which БАВТ sets before it starts the image:
 the handlers at 66344-66356 load a constant and go to 66357. The
 `job: alfa` variable holds the argument. Mode by command:
