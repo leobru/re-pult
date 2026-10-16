@@ -25,7 +25,9 @@ terminal I/O, and 064 is printing.
   Don't write ad-hoc decoders.
 - `dispak --coverage` only maps addresses ≥ 01000. Use `dispak -t -t`, whose
   `AAAAA:` / `AAAAA;` lines include page 0. `tools/phasetrace.py` turns such a
-  trace into per-image traces.
+  trace into per-image traces. The indented `      AAAAA: store …` lines are
+  memory writes, not executed code; phasetrace skips them (before that fix,
+  data cells and whole images that were only written showed up as code).
 - Text in the catalog and in ПУЛЬТ messages is GOST 10859 (`tools/gost.py`).
   The Pascal side keeps its own strings in ITM code.
 - dispak `Э50 7700` is "set alarm": with an ordinary A it **sleeps**
@@ -33,6 +35,9 @@ terminal I/O, and 064 is printing.
 - `tools/probe.sh 'cmd args' ...` runs each line in its own session (then
   `конец`) and prints the Э70 exchanges after boot plus the terminal output.
   That is the quick test of whether a command loads an overlay.
+- pult.b6 has a `тел` card, so dispak runs ПУЛЬТ as a terminal task
+  (without it, Э71 reports no terminal, and the formatter switches to
+  65-column lines and `.`-digraphs).
 - dispak runs share `~/.besm6/input_queue`; remove it before each session
   and never run two sessions at once.
 
@@ -71,7 +76,7 @@ with a zero word. `tools/catalog.py` prints it.
 | ПУЛЬТФ | 004 | 1 | |
 | ДАЙ | 005 | 1 | `дай SUB args`, page 0; assembly, no АДСИС; see «ДАЙ» below |
 | АДСИС | 006 | 1 | Pascal runtime library, page 36 (074000); the compiler's ИА=74000 table |
-| РЕЗРВ1 | 007 | 22 | pool of overlays (zone 015 runs in page 0 for `алг`); per-zone pieces `РЕЗРВ1+k` |
+| РЕЗРВ1 | 007 | 22 | pool of overlays; `алг` reads zone 015 into page 0, but no code of it runs before the session stops (ПЛОХО С Э60); per-zone pieces `РЕЗРВ1+k` |
 | СЕРВИС | 031 | 3 | `сервис`, `сер`, Pascal program, pages 0-2 (+АДСИС) |
 | ПАСЛ | 034 | 1 | saved state ("ЛЕНТЯЙ…РАSСАL…" text) |
 | СБОЙ | 035 | 1 | **page 37 (076000)**, resident ПУЛЬТ services |
@@ -88,7 +93,7 @@ with a zero word. `tools/catalog.py` prints it.
 | ОТЛ | 052 | 3 | `о`: zones 052-054 → pages 24-26 (НАБЛ 56342 adds an offset to the zone) |
 | ЛЕС | 055 | 3 | `лес`, Pascal program, pages 0-2 |
 | ЧИСТКА | 060 | 3 | `чистка`, Pascal program, pages 0-2 |
-| СТАТИС | 063 | 1 | Pascal program, page 0, +АДСИС; six modes, see «СТАТИС» below |
+| СТАТИС | 063 | 1 | Pascal program, page 0, +АДСИС; six modes, see «СТАТИС» below. In the `статис` session the runtime prints «QU» before any СТАТИС code runs |
 | ЭХОЛОТ | 064 | 4 | `эхолот`, Pascal program, pages 0-3 |
 | ДЖИП | 070 | 1 | `джин` (with АДСИС in page 36) → page 0; `диалог` → page 12 (after ЭХОЛОТ's zones 064-067 → pages 0-3) |
 | РЕЗРВ2 | 071 | 2 | |
@@ -253,20 +258,126 @@ word). The routine at 76203:
    zone 0240) and writes it back to drum 27 zone 036 (76241-76242).
 3. If the word still doesn't match, it stores both words in the message at
    76312-76317 and returns. The caller prints it: «СТОИТ <catalog's word>
-   МЛ <expected>». dispak shows only «СТОИТ.176МЛ.176», because the
-   message stops at the 0377 bytes in 76313.
+   МЛ <expected>». It prints as «СТОИТ.176МЛ.176»: the 0176 codes come
+   out as `.176` (see below), and the 0377 bytes in 76313 end the text
+   before the values.
 4. Otherwise it searches page 34 for the name (76250-76257). If found, it
    reads the program's zones with Э70 (76260-76277) and returns to 1(М11).
-   If not found, it returns to (М11) with the name in 76321.
+   If not found, it copies the name (77771) into 76321 and returns to (М11)
+   with М1 = 76321. The caller prints 76321-76322, i.e. the name, then `!`
+   (0133) and 0172 from 76322. That gives «ХУZ   !» for `xyz` («ХУZ   .I» without `тел`): dispak
+   enters Latin x and y as GOST Х and У, and the formatter below turns `!`
+   into `.I`.
 
 `арх NAME,U,Z` reads that archive's catalog (unit U zone Z, here unit 50
 zone 0100) into page 3 and writes it to drum 27 zone 036 (ПУСК 01176-01160).
 After that the drum copy matches, and an unknown command such as `xyz`
-prints «ХУZ .I»: name not found, with no tape read. Without `арх`, 2248 zone
+prints «ХУZ   !»: name not found, with no tape read. Without `арх`, 2248 zone
 01240 is read. It holds only 14 words: some code, then the ASCII text
 `OVERLAY OT 27.06.85 M3 <<-->>`, and it is not a valid catalog. That is
 where «СТОИТ…МЛ…» comes from. `ктл`, `упор` and `искл` (СЛУЖ) read the same
 two places into page 3.
+
+## Terminal output formatter (76426)
+
+76005 (print) and the other output entries at 76414-76417 run the text
+through the formatter at 76426 before it goes out with Э71 76401.
+
+Whether it is used depends on two cells, and what it does depends on
+whether there is a terminal (76413):
+
+- 76014: if non-zero, 76005 (76164) and the formatter (76431, 76566) print
+  with `Э64 76177` (the printout) instead of the terminal. ПУСК copies
+  page-0 cell 040 into it (0327-0330, 0624). It is 0 in the dispak runs,
+  and ПУСК 01550 (`resist`, `канал`) tests it.
+- 76013: the output mode. Bit 1 (76125) sends 76005's text to the
+  terminal through the formatter. Bit 2 (76124) prints it with Э64, the
+  printout copy. Values: 1 = terminal (ППН), 3 = terminal + printout (ПП),
+  2 = printout only (ПА), 0 = none (НП). Its value comes from the СБОЙ
+  image (zone 035 has 1), loaded at boot and kept on drum 27 zone 031.
+  Pages restored from there (e.g. after `алг`) keep the current mode.
+  Writers (`grep 76013` over `besmtool dump`):
+  - БАВТ `пп` (01225: 76013 = 76420 = 3), `ппн` (01232: 76013 = 1,
+    76420 = 0) and `па` (0502 patches the constant 01350 to 2, then runs
+    the `пп` code). They write page 37 back to drum 27 zone 031, so the
+    mode lasts for the session.
+  - СЕРВИС options ППН/ПП/ПА/НП (zone 033, 05626-05645: 1/3/2/0) and
+    СТРУК options ПА/ПП/ППН (01407-01424: 2/3/1).
+  - ПАСК: options in its table at 66221- (66241-66244: 3, 1, 2; НП stores 0),
+    and the routine at 67034, which stores 2.
+  - НОВРЕД saves the mode (04715), sets 2 (04717), and restores it (04752).
+  So bit 1 becomes 0 through ПА or НП (СЕРВИС, СТРУК, ПАСК, `па`), or for
+  the duration of НОВРЕД's printout. 76420 (set together with it by
+  `пп`/`ппн`/`па`) makes the formatter also send each terminal line to
+  Э64 76550 (76523-76524).
+  With 76014 = 76013 = 0, 76005 prints nothing: there is no path to the
+  terminal that bypasses the formatter (76164-76175). Checked by booting a
+  scratch copy of 2248 with 76013 = 0 in zone 01035: «СТОИТ…» (`xyz`) and
+  the account id (`дай шифр`) disappear, but «НЕПР. ИМЯ ЛЕНТЫ:» (`ктл`)
+  and НАБЛ's own lines still appear. НАБЛ has its own copy of the
+  formatter: the entry at 56400 → 56424, with the digraph table at 56734,
+  shifted from СБОЙ's 76770. It prints with `Э71 56401` (56514) whatever
+  76013 holds, and adds the printout copy when its own 56420 ≠ 0. СЛУЖ
+  prints through it (`пв 400(М11)` with М10 = 56000).
+  Checked with `xyz` after each mode: `ппн` puts «ХУZ   .I» (run without `тел`) on the terminal
+  only. `па` sends it only to `Э64 76177` (76175), and `пп` does both. In
+  `па`/`пп` НАБЛ also logs the input lines with `Э64 56535` (56513, 56553).
+- In the formatter, every character except 0175 goes through the table
+  lookup (76457-76466, two passes, M4 = -2) and then the ≥ 0137 octal
+  test. The setup at 76671 decides what they do: if 76413 ≠ 0 (there is
+  a terminal), 76677-76701 overwrite the first table words 76770-76771
+  with all ones, so the table is empty and nothing is substituted. They
+  also replace the escape prefix 76756 (`.`) and 76763 with 0132 (`_`)
+  from 76764. So the `.`-digraphs are only for output without a terminal,
+  i.e. for a printer. With `тел`, `xyz` prints «ХУZ   !».
+  The other terminal-dependent setting is the line length. М5 counts the characters (76745 `слиа 1(5)`), and the line
+  is broken when М5 wraps past 077777 (76504-76506: `счи 5; сда 104; пе`).
+  It starts at 77677, i.e. 0101 = 65 characters, or at 77661 = 79 when
+  76413 ≠ 0 (76440-76441). НАБЛ's copy uses 77677 or 77663 = 77 (56433).
+  76413 comes from the terminal status. 76104 issues `Э71 77013` (an
+  all-ones word, «which terminal?»), then `нед` turns the answer into the
+  terminal number (76310, also put into the Э71 control words 76401-76404),
+  and 76413 = number << 24. So the width depends only on whether there
+  is a terminal number at all: 0 → 65 characters, any terminal → 79 (НАБЛ 77).
+  Nothing asks the terminal how wide it is.
+  pult.b6 had no `ТЕЛ` card at first. dispak sets `psp.tele` only from
+  `ТЕЛ`/`TEL` (vsinput.c), so it ran the job as a batch task (`notty`), and
+  `term()` answered the all-ones word with acc = 0. Hence 65-character lines (the `с`
+  listing breaks its rows at 65). With `тел^` added to the passport, Э71
+  returns 0004000000000000 (terminal 012). `нед` gives 012, and 76413 =
+  0000001200000000, so 76441 loads 77661 (79 characters) and НАБЛ 77663
+  (77: the `с` rows become 77 long). pult.b6 now has `тел`. The formatter
+  reads
+one GOST code at a time (76736) and:
+
+- stops at 0377 (76727), 0172 (76766) or 0231 (76767); 0175 is the line end;
+- prints the characters a terminal lacks as `.` followed by a mnemonic,
+  from the table at 76770-77011 (each word: replacement in the high bytes,
+  original code in the low byte; 77001 = 0377 ends the one-letter part):
+
+  | char | code | printed |
+  |---|---|---|
+  | `;` | 026 | `.,` |
+  | `!` | 0133 | `.I` |
+  | `‘` | 032 | `.’` |
+  | `×` | 024 | `.Х` |
+  | `⏨` | 020 | `.Ю` |
+  | `⊃` | 0122 | `.Э` |
+  | `¬` | 0123 | `.Г` |
+  | `_` | 0132 | `._` |
+  | `⩽` | 0116 | `.LЕ` |
+  | `⩾` | 0117 | `.GЕ` |
+  | `∨` | 0120 | `.ОR` |
+  | `≡` | 0125 | `.==` |
+  | `\|` | 0130 | `.VЕ` |
+  | `―` | 0131 | `.НО` |
+  | `÷` | 0124 | `.DI` |
+
+- prints any other code ≥ 0137, except 0146, in octal as `.ooo` (76467-76474,
+  mask 76760), e.g. 0176 → `.176`.
+
+× appears twice (76773, 76775). The table was read from the image; only
+`!` → `.I` and 0176 → `.176` have been seen in a run.
 
 ## СЛУЖ (zone 044)
 
