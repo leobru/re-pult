@@ -8,7 +8,7 @@ for cmd; do
     echo "=== $cmd"
     rm -rf ~/.besm6/input_queue
     printf '%s\nконец\n' "$cmd" |
-    timeout ${TIMEOUT:-30} dispak -t -q "${PULT:-pult.b6}" 2>&1 |
+    timeout ${TIMEOUT:-30} dispak --725 -t -q "${PULT:-pult.b6}" 2>&1 |
     awk '{ line = $0; ex = ""
            if (match(line, /[0-7][0-7][0-7][0-7][0-7]: \*[0-7]+ .*/)) {
                ex = substr(line, RSTART); line = substr(line, 1, RSTART - 1) }

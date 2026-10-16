@@ -54,7 +54,14 @@ notes as routines are understood. `build/` is reproducible, so don't edit it.
 - Images are in `/usr/local/share/besm6` (2148, 2248). Private or modified
   copies go in `~/.besm6` (e.g. 2249, below).
 - `pult.b6` (from pasauto-re's `pult2.b6`) maps `лент 40(2250-1000)` and
-  `лент 57(2250-1000)`, so unit 40 zone N = zone 01000+N. 2250 is
+  `лент 57(2250-1000)`, so unit 40 zone N = zone 01000+N. It also has
+  `тел`, `спец`, `физо мб21` with unit 57 as the first ЛЕНТ card (the
+  physical drums live on unit 57; АЛГ and ФОРТ move its offset to their
+  drum images, 0300 and 0200), and the scratch `лент 30(1С)`. dispak runs
+  with `--725` (Makefile `DISPAKFLAGS`, `tools/probe.sh`, `tools/loads.sh`),
+  so offsets set by `Э50 0112` are used as given. Without `спец`, code that
+  the Dubna monitor copies with ordinary stores is tagged as data
+  (КОНТРОЛЬ КОМАНДЫ). 2250 is
   `~/.besm6/2250`: 2248 with the patches in `patches-2248.txt`, built by
   `make vol` (`tools/patchvol.py`, which checks each old word). `make
   images` and the listings still use the original 2248. It reads unit
@@ -482,8 +489,11 @@ from Э60 to ПУЛЬТ.
    names the base drum. The native ALGOL job
    (`~/git/besm6/dispak/tests/algol-besm6/algol-besm6.b6`) has `ФИЗО МБ21`
    with `ЛЕНТ 57(2148-300)` first, and the scratch `ЛЕНТ 30(1С)`. So pult.b6
-   has `физо мб21` (drum 22 track 034 → zone 0300 + 040 + 034 = 0374, which
-   holds the translator's next part) and `лент 30(1С)`. The translator
+   has `физо мб21` with unit 57 first, and `лент 30(1С)`. The 2250 patch
+   02220 (BCD 2068 → 2250) makes АЛГ take its "unit 40 is the ПУЛЬТ
+   volume" branch: `Э62 057300` and the translator read from unit 57. Drum
+   22 track 034 is then zone 0300 + 040 + 034 = 0374, which holds the
+   translator's next part. The translator
    writes unit 30 zone 1 (00544), and СЛУЖ reads the edit buffer from unit
    30 zone 1 (СЛУЖ 0726).
 5. **Current state.** `алг` now runs the ALGOL translator. With nothing to
@@ -539,9 +549,69 @@ The probe outputs below are with no arguments.
 | `сравн` | 0776 | compares zones (texts «НЕ РАВНО», ЗОНА, АДРЕС at 01043-01046) | ends in the archive-catalog lookup, «СТОИТ.176МЛ.176» |
 | `ацпу` | 01053 | not analysed | «НЕТ» |
 | `новарх` | 01065 | creates an archive, e.g. `дай новарх,50,100,вася` in pasauto-re's pas.sh | «НЕТ» |
-| `форт` | 01225 | reads zone 005 (ДАЙ itself) into page 36 twice, then unit 21 zone 0201 → page 1 | АВОСТ 24 |
+| `форт` | 01225 | starts the Dubna monitor (standard program 0100 via Э66), see «ДАЙ форт» below | «Э074» |
 
 None of the probes changed 2345 (unit 50, the only writable volume).
+
+### ДАЙ форт (01225)
+
+1. `Э70 1244` reads ДАЙ's own zone (005) into page 36, so its code from
+   01265 on is also at 75265.
+2. The handler for asynchronous events is set to 75265 (`Э53 11`, from
+   М2 = 74000 + 01265). It then sets the event mask (`Э53 12`, 01245), the
+   alarm (`Э50 7700`, 01305) and the extracode intercept mask (`Э62 53`;
+   if the answer ≠ 077777 → 01335), and enables events (`Э53 14`).
+3. It reads ДАЙ into page 36 again, then sets unit 57's offset with
+   `Э50 112`, A = 0570200: offset 0200, where the Dubna monitor's drum image
+   starts (2148/2248 zone 0200; 2048 zone 0 in dispak's standard passport
+   С5). This value is meant for small disks: dispak scales it by 040 for
+   disks ≥ 2048 (giving 0) unless run with `--725`.
+4. `Э66 5` with М15 = 0200 calls standard program **0100**. The address 5
+   is a parameter; the СП number is in the next instruction, `зп 100`
+   (the right half of 01242). dispak passes Э66 to its mini-supervisor
+   (`dispak/spe66.b6`, the original «вызов СП с барабана»). That loads the
+   СП into page 0 and enters it at 00210 with М16 = 5 and М15 = 0200.
+5. The СП (00210-00272) issues `Э63 3`, then at 00251 `Э70 64(М15)` with
+   descriptor 4014010000210201. That is a physical (the 4 in 0014) sector
+   (the leading 4) read: drum 21 track 1, sector 2 (`(0201 >> 6) & 3`), into
+   02000-02377: zone 0201 words 01000-01377. Then `Э75 44` and `пб 2051`.
+6. The monitor then copies drum tracks (physical drum 21 tracks 7, 010 →
+   logical drum 21 tracks 0, 1, …) and runs. It asks for its input with
+   `Э60 3332` (01074), prints with Э64 (02626) and ends with `Э74` (01006),
+   which ПУЛЬТ reports as «Э074».
+7. **Input.** An argument (`дай форт,NAME`, `дай форт NAME`) changes
+   nothing: ФОРТ never reads it. The input comes from ДАЙ's handler.
+   `Э62 53` with М15 = 023 intercepts Э60, Э64 and Э74, and the event mask
+   01245 has event 19 (interception). The handler (75265) rebuilds the
+   intercepted instruction from the saved PC (D−8) to get its effective
+   address in М15. It then dispatches on the low 16 bits of save word D−10
+   (75326-75334): 020 Э60, 024 Э64, 034 Э74, i.e. the opcode − 040.
+   Anything else ends with Э74 (01335, «Э074»).
+   - Э60 (01337): reads unit 42 zone 01523 (fixed descriptor 01464) into
+     page 35, packs the text into cards at the Э60 address (01340-01446;
+     0175 ends a line, 0172 / 0341 the text), then `Э53 15` skips the
+     extracode.
+   - Э64 (01364): М15 = bits 1-15 of the left half of the info word, and
+     `пв 76005` prints from there. The register fields are ignored. The
+     exit (01373-01405) uses addresses modified by М1, which only the Э60
+     path sets to 74000.
+   - Э74 (01363): `Э74` with М11 = 074.
+
+   With the current dispak (`~/git/dispak`, ac49c0e), the interception
+   happens: the first `Э60 43(6)` (01074) enters 75265 with `opcode & 037`
+   in D−10. (Before that fix D−10 held only the RAU bits, so the result was
+   «Э074».) The Э60 path then reads unit 42, which is not in pult.b6:
+   АВОСТ 42. A scratch volume as unit 42 with the `fortran-dubna` test deck at zone 01523 (GOST, 0175 line ends, 0172) got
+   further: the cards were accepted, and the monitor read its drums and
+   issued its first `Э64 104(7)` (02626). Its info word `6400000074077777`
+   means "from М15 to М17 − 1", so the handler printed page 0 from address
+   0 (a line of garbage). On the way out, М1 = 5, so `пе 1335(1)` jumped
+   to 01342 and the run ended with «ВЫВОД ЗАПРЕЩЕН», АВОСТ 31 at 40070.
+
+Earlier setups failed sooner. Without `физо` the physical read failed. With
+the physical drums on unit 40 or on a unit at offset 0300, the СП read the
+wrong zone and ran into leftovers (division by zero, АВОСТ 22). Without
+`спец`, КОНТРОЛЬ КОМАНДЫ at 00423.
 
 ## СТАТИС (zone 063)
 

@@ -6,3 +6,7 @@
 # dispak uses them (TODO.md), so 0302 would read zone 0317 instead of 0315.
 1042 0135 0940c2032000 0940c0032000  мода 40302 → мода 40300; э62
 1042 0137 095ec2032000 095ec0032000  мода 57302 → мода 57300; э62
+# АЛГ (zone 01042): compare the volume on unit 40 with 2250 (BCD) instead of
+# 2068, so АЛГ takes the branch that moves unit 57, the physical-drum unit,
+# and reads the translator from it.
+1042 0220 000000002068 000000002250  2068 → 2250
