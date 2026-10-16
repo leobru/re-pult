@@ -65,14 +65,14 @@ with a zero word. `tools/catalog.py` prints it.
 
 | name | zone | len | known role / load page (from traces) |
 |---|---|---|---|
-| РРR | 001 | 1 | |
-| ПУЛЬТ | 002 | 1 | |
-| АЦПУК | 003 | 1 | |
+| РРR | 001 | 1 | `ррr` (Latin R) via БАВТ: page 0, +АДСИС |
+| ПУЛЬТ | 002 | 1 | `пульт` via БАВТ: page 0, then ЗГЛВК → page 1; prints «ШИФР  ЛЕНТ» |
+| АЦПУК | 003 | 1 | `ацпу` via БАВТ: page 36, then drum 27 zone 0137 → page 36 |
 | ПУЛЬТФ | 004 | 1 | |
 | ДАЙ | 005 | 1 | `дай` command, page 0 |
 | АДСИС | 006 | 1 | Pascal runtime library, page 36 (074000); the compiler's ИА=74000 table |
 | РЕЗРВ1 | 007 | 22 | pool of overlays (zone 015 runs in page 0 for `алг`); per-zone pieces `РЕЗРВ1+k` |
-| СЕРВИС | 031 | 3 | `сервис`, Pascal program, pages 0-2 (+АДСИС) |
+| СЕРВИС | 031 | 3 | `сервис`, `сер`, Pascal program, pages 0-2 (+АДСИС) |
 | ПАСЛ | 034 | 1 | saved state ("ЛЕНТЯЙ…РАSСАL…" text) |
 | СБОЙ | 035 | 1 | **page 37 (076000)**, resident ПУЛЬТ services |
 | ЗГЛВК | 036 | 1 | read into page 1 at boot; `я` reads it into page 1 again and prints from it (Э64 01451) |
@@ -88,18 +88,18 @@ with a zero word. `tools/catalog.py` prints it.
 | ОТЛ | 052 | 3 | `о`: zones 052-054 → pages 24-26 (НАБЛ 56342 adds an offset to the zone) |
 | ЛЕС | 055 | 3 | `лес`, Pascal program, pages 0-2 |
 | ЧИСТКА | 060 | 3 | `чистка`, Pascal program, pages 0-2 |
-| СТАТИС | 063 | 1 | `статис`, page 0 |
+| СТАТИС | 063 | 1 | Pascal program, page 0, +АДСИС; six modes, see «СТАТИС» below |
 | ЭХОЛОТ | 064 | 4 | `эхолот`, Pascal program, pages 0-3 |
 | ДЖИП | 070 | 1 | `джин` (with АДСИС in page 36) → page 0; `диалог` → page 12 (after ЭХОЛОТ's zones 064-067 → pages 0-3) |
 | РЕЗРВ2 | 071 | 2 | |
 | СТРУК | 073 | 1 | `струк`, Pascal program, pages 0-1 |
 | РЕЗРВ3 | 074 | 1 | |
-| НОВРЕД | 075 | 3 | |
+| НОВРЕД | 075 | 3 | `ред NAME` (or `м NAME`) via БАВТ: zones 075-077 → pages 0-2, plus АДСИС → page 36 (Pascal program). `ред пам` gives a `+` prompt; `ред буф` needs `арх` first («НЕТ НАСТРОЙКИ НА АРХИВ»), then looks the name up in the archive («В АРХИВЕ ВАСЯ НЕТ ИМЕНИ БУФ») |
 
 Catalog names are not command names: `спис`, `отл`, `джип` etc. fall
 through to БАВТ. The commands that load СЛУЖ, СПИС, ОТЛ, ДЖИП and ЗГЛВК are
-in the next section. Still unknown: what loads ПУЛЬТ, АЦПУК, ПУЛЬТФ,
-АВТПАК, НОВРЕД (НАБЛ has descriptors for zones 047-051 into page 25 at
+in the next section. The БАВТ section below covers ПУЛЬТ, АЦПУК, РРR and НОВРЕД. Nothing
+found so far loads ПУЛЬТФ or АВТПАК (НАБЛ has descriptors for zones 047-051 into page 25 at
 56362-56364, not reached from the command tables).
 
 ## Boot (trace of `конец`)
@@ -164,8 +164,7 @@ that run in page 0 overwrite it. ПУСК's entries from НАБЛ are at 010-015
 
 ПУСК 01453 scans its own (name, jump) table at 01463-01536 against 56222
 (sentinel 01537). A miss goes to 01416: БАВТ (zone 051) → page 33, пб 66007,
-and БАВТ handles the name (its table is at 66074-, e.g. РЕД, МАВТ, ПУЛЬТ,
-ДАЙ, ПАСКАЛ, ПАС, КОНКАТ, ДИСПАК, ФОРМ, ДУБНА, ЧИСТКА, ЛЕС, ЗАГР, …).
+and БАВТ handles the name (see the БАВТ section).
 Many handlers end through 01037: print the text at 01041 (`ЕСТЬ`) with
 76005, then leave through 76002 (back to НАБЛ via drum 27 zone 037).
 
@@ -177,7 +176,7 @@ Many handlers end through 01037: print the text at 01041 (`ЕСТЬ`) with
 | `пз` | 01424 | Э70 with descriptor 01426 = `0062007600000000` (not a zone read), пб 64010; prints «О.К» | — |
 | `печ` | 01427 | `Э62 76` (dispak: "drop incognito"), «ЕСТЬ» | — |
 | `тур` | 01431 | plants `Э70` in cells 6-7 and runs them: unit 51 zone 0365 → page 1, zone 0364 → page 0. Unit 51 is not in pult.b6: АВОСТ 42 | unit 51 |
-| `new` | 01036 | `Э62 43`; dispak lacks it (АВОСТ 3, «Пока рано») | — |
+| `new` | 01036 | `Э62 43` = keep the job in the input queue for a future restart; dispak lacks it (АВОСТ 3, «Пока рано»; see TODO.md) | — |
 | `связь` | 01042 | internal; prints `00:` | — |
 | `я` | 01440 | ЗГЛВК (zone 036) → page 1, prints with Э64 01451 | ЗГЛВК |
 | `инк` | 01244 | `Э62 44` (cancel output stream), «ЕСТЬ» | — |
@@ -201,6 +200,65 @@ continue in ПУСК, which is only reloaded. In ПУСК: `пк`, `resist`, `к
 `пз`, `печ`, `new`, `связь`, `инк` and `выд`. `nf`, `put` and `of` start
 internally but end in a load or a crash. Everything else loads an overlay,
 and an unknown name loads БАВТ.
+
+## БАВТ names (page 33)
+
+БАВТ's (name, word) table is at 66074-66177; 66200 ends it. The second
+word is the handler's offset from 066000 (checked for the СТАТИС names:
+0344 → 66344, etc.). A name in neither this table nor the ПУСК/НАБЛ tables goes to
+the unit 40 zone 0240 library: БАВТ reads it into page 34 and prints
+«СТОИТ.176МЛ.176» for `xyz`. The results below are from `tools/probe.sh`
+with no arguments and no `арх`. Every name first reloads ПУСК and loads БАВТ.
+
+| name | loads | output with no arguments |
+|---|---|---|
+| `ред`, `м` | НОВРЕД (075-077) → pages 0-2, АДСИС → 36 | «ГДЕ ЖЕ ИМЯ ?» |
+| `мавт` | — | «НЕТ СИМВОЛОВ КОНЦА» |
+| `бавт` | unit 30 zone 01747 → page 0 (not mapped) | «Внутр.ош.эмул» |
+| `пульт` | ПУЛЬТ (002) → page 0, ЗГЛВК → page 1 | «ШИФР  ЛЕНТ» |
+| `дай` | ДАЙ (005) → page 0 | «НЕ ДАМ» |
+| `паскал`, `пас` | ПАСК (050) → page 33, АДСИС, the translator zones 0101-0114 → pages 0-13. `пас` first reads unit 17 zone 037 | «ПАСКАЛЬ-АВТОКОД 9.(17.05.88)» |
+| `конкат` | — | «QU» |
+| `диспак` | — | a line of zeros |
+| `форм` | — (writes page 27 to drum 27 zone 037) | «КОН СТР=000 ДЛИН=00000 ПРОГОН=0 КТ=000000» |
+| `статис`, `врем`, `впак`, `дубна`, `гост`, `алгп` | СТАТИС (063) → page 0, АДСИС; mode 5…0 | `врем`: «ВЦП=0+0 СОТЫХ СЕК.ОСТ=3600.ВРЕМЯ БЭСМ=20.1.0»; the others «QU» |
+| `чистка` | ЧИСТКА (060-062) → pages 0-2, АДСИС | «**** Ч И С Т К А ****» |
+| `лес` | ЛЕС (055-057) → pages 0-2, АДСИС | «==> » |
+| `загр` | unit 57 zone 0144 (2248 zone 01144) → page 20 | «ЗАТЕРТО СПО» |
+| `ррr` | РРR (001) → page 0, АДСИС | «QU» |
+| `пп`, `ппн`, `па` | — (drum 27: page 1 ← 037, page 37 → 031, page 1 → 037) | nothing |
+| `зкан`, `сбуф` | — | «НЕТ» |
+| `демос` | unit 66 zone 0700 (not mapped: АВОСТ 42) | |
+| `энт` | unit 66 zone 01024 (not mapped: АВОСТ 42) | |
+| `порц` | — (page 27 → drum 27 zone 037, page 37 → zone 031) | nothing |
+| `ацпу` | АЦПУК (003) → page 36, drum 27 zone 0137 → page 36 | «ЧАСТЬ    000000» |
+| `эхолот` | ЭХОЛОТ (064-067) → pages 0-3, АДСИС | «**** Э Х О Л О Т ****» |
+| `струк` | СТРУК (073-074) → pages 0-1, АДСИС | «-=* СТРУКТУРА ПРОГРАММЫ *=-» |
+| `сер`, `сервис` | СЕРВИС (031-033) → pages 0-2, АДСИС | «ПАСКАЛЬ-СЕРВИС» |
+
+So `мавт`, `конкат`, `диспак`, `форм`, `пп`, `ппн`, `па`, `зкан`, `сбуф` and
+`порц` are handled inside БАВТ. The others load a catalog entry or an
+outside zone.
+
+## СТАТИС (zone 063)
+
+Decompiled, but not fully understood or annotated, in
+`~/git/besm6/pasauto-re/statis.pas`. The main program dispatches on the
+global `i` (its first variable), which БАВТ sets before it starts the image:
+the handlers at 66344-66356 load a constant and go to 66357. The
+`job: alfa` variable holds the argument. Mode by command:
+
+| `i` | БАВТ | command | procedure | what it does |
+|---|---|---|---|---|
+| 0 | 66356 (A = 0) | `алгп` | АЛГОЛ | wraps the text as an ALGOL batch job (ПАСП '66', `$АЛГОЛ`) |
+| 1 | 66355 (67352) | `гост` | ВЫДАТЬ | `job` = NEWS (Э62 43), АЦПУ, FREETT, RUNTT, `58`; otherwise recodes the text with `марга` |
+| 2 | 66354 (67351) | `дубна` | ДУБНА | wraps the text as a Dubna-monitor batch job (ПАСП '44') |
+| 3 | 66353 (67350) | `впак` | case 3 | builds an autocode job (ПАСП '33', `В10000А1`) from the text up to `"` |
+| 4 | 66345 (67333) | `врем` | ВРЕМЯ | prints CPU time, time left and the BESM clock (Э63 0, Э63 4, Э53 10) |
+| 5 | 66344 (67330) | `статис` | СТАТ | counts lines, characters, letters, digits and zones, and makes a histogram |
+
+Anything outside 0..5 prints «НЕПР. ЗАПУСК». With nothing to work on,
+modes 0, 1, 2, 3 and 5 print «QU» in the probe.
 
 ## Page 37 (СБОЙ) services
 
