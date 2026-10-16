@@ -30,6 +30,9 @@ terminal I/O, and 064 is printing.
   The Pascal side keeps its own strings in ITM code.
 - dispak `Э50 7700` is "set alarm": with an ordinary A it **sleeps**
   (A & 077777) × 80 ms. Garbage in A looks like a hang. Wrap runs in `timeout`.
+- `tools/probe.sh 'cmd args' ...` runs each line in its own session (then
+  `конец`) and prints the Э70 exchanges after boot plus the terminal output.
+  That is the quick test of whether a command loads an overlay.
 - dispak runs share `~/.besm6/input_queue`; remove it before each session
   and never run two sessions at once.
 
@@ -72,31 +75,32 @@ with a zero word. `tools/catalog.py` prints it.
 | СЕРВИС | 031 | 3 | `сервис`, Pascal program, pages 0-2 (+АДСИС) |
 | ПАСЛ | 034 | 1 | saved state ("ЛЕНТЯЙ…РАSСАL…" text) |
 | СБОЙ | 035 | 1 | **page 37 (076000)**, resident ПУЛЬТ services |
-| ЗГЛВК | 036 | 1 | read into page 1 at boot, apparently never executed |
+| ЗГЛВК | 036 | 1 | read into page 1 at boot; `я` reads it into page 1 again and prints from it (Э64 01451) |
 | КТЛБИБ | 037 | 1 | library catalog (data) |
 | ПУСК | 040 | 1 | **page 0**, boot and resident kernel |
 | НАБЛ | 041 | 1 | read into page 1, copied via drum 27 track 37 to **page 27 (056000)**: command loop (terminal Э71 at 56514/56550/56053) |
 | АЛГ | 042 | 2 | `алг`: zone 042 → page 1, 043 → page 33 |
-| СЛУЖ | 044 | 1 | |
-| СПИС | 045 | 2 | |
+| СЛУЖ | 044 | 1 | page 0, entries 10-13: `з`/`зап` (10), `ктл` (11), `упор` (12), `искл` (13) |
+| СПИС | 045 | 2 | `с`: zone 045 → page 0, entry 10; `р`: zone 046 → page 1, entry 2010 |
 | АВТПАК | 047 | 1 | |
 | ПАСК | 050 | 1 | ПАСКАЛ (Pascal-autocode driver), page 33 (066000) |
 | БАВТ | 051 | 1 | page 33. Runs first for `пас` and for any name ПУЛЬТ itself doesn't know (then reads unit 40 zone 0240 into page 34) |
-| ОТЛ | 052 | 3 | |
+| ОТЛ | 052 | 3 | `о`: zones 052-054 → pages 24-26 (НАБЛ 56342 adds an offset to the zone) |
 | ЛЕС | 055 | 3 | `лес`, Pascal program, pages 0-2 |
 | ЧИСТКА | 060 | 3 | `чистка`, Pascal program, pages 0-2 |
 | СТАТИС | 063 | 1 | `статис`, page 0 |
 | ЭХОЛОТ | 064 | 4 | `эхолот`, Pascal program, pages 0-3 |
-| ДЖИП | 070 | 1 | |
+| ДЖИП | 070 | 1 | `джин` (with АДСИС in page 36) → page 0; `диалог` → page 12 (after ЭХОЛОТ's zones 064-067 → pages 0-3) |
 | РЕЗРВ2 | 071 | 2 | |
 | СТРУК | 073 | 1 | `струк`, Pascal program, pages 0-1 |
 | РЕЗРВ3 | 074 | 1 | |
 | НОВРЕД | 075 | 3 | |
 
-The commands `спис`, `отл`, `джип`, `новред`, `служ`, `пуск` and `автпак`
-are not recognized under those names; they fall through to БАВТ and the
-zone-0240 library. The command names that load these entries are still
-unknown.
+Catalog names are not command names: `спис`, `отл`, `джип` etc. fall
+through to БАВТ. The commands that load СЛУЖ, СПИС, ОТЛ, ДЖИП and ЗГЛВК are
+in the next section. Still unknown: what loads ПУЛЬТ, АЦПУК, ПУЛЬТФ,
+АВТПАК, НОВРЕД (НАБЛ has descriptors for zones 047-051 into page 25 at
+56362-56364, not reached from the command tables).
 
 ## Boot (trace of `конец`)
 
@@ -115,6 +119,88 @@ unknown.
 The exchange descriptor is `0 0 1|0 0 PP 0 0 | 0 0 UU ZZZZ` in octal
 digits: digit 2 = 1 means read, digits 4-5 are the page, digits 10-11 the
 unit and 12-15 the zone (see `tools/loads.sh`).
+
+## Command dispatch (НАБЛ and ПУСК)
+
+Verified with `tools/probe.sh` on 2248, one command per session.
+
+НАБЛ (page 27; position-independent, М10 = 056000) reads a line with Э71
+(56540-56551, then 56053), and 56155 parses the first word into 56222. The
+word is GOST, right-justified, padded on the left with 0377 bytes, at most 6
+letters (Cyrillic and the Latin letters up to Z, codes 040-0114). If the line
+does not start with a letter, the word stays all ones. 56021 scans the
+(name, jump) pairs at 56027-56075. The match must be exact: `кон`,
+`конецабв` and `сисалг` are unknown names. The sentinel 56075 (`0…0377`)
+leads to 56076, the default. Words 56053-56064 inside the table are code,
+not entries. Table, with what the probe saw:
+
+| word | target | action | overlay |
+|---|---|---|---|
+| (no word: empty line, digits, `*`, `+` …) | 56077 | calls 56400, back to 56010; no exchange. Probably the text-entry part of НАБЛ (not analysed) | — |
+| `з` | 56302 | zone 044 (СЛУЖ) → page 0, пб 10 | СЛУЖ |
+| `с` | 56312 | zone 045 (СПИС) → page 0, пб 10 | СПИС |
+| `р` | 56314 | zone 046 (СПИС+1) → page 1, пб 2010 | СПИС |
+| `о` | 56342 | zones 052+k (ОТЛ) → pages 24-26, пб 10(М7) | ОТЛ |
+| `зап` | 56302 | same as `з` | СЛУЖ |
+| `ктл` | 56304 | СЛУЖ, пб 11; then reads drum 27 z036 and u40 z0240 into page 3 | СЛУЖ |
+| `упор` | 56306 | СЛУЖ, пб 12 (then as `ктл`) | СЛУЖ |
+| `искл` | 56310 | СЛУЖ, пб 13 (then as `ктл`) | СЛУЖ |
+| Latin `F` (0100) | 56052 | `Э62` with address 0: dispak ends the job at once | — |
+| `сис` | 57722 | internal, see below | — |
+| `арх` | 56340 | reloads ПУСК (zone 040 → page 0), пб 15 | — |
+| `алг` | 56300 | zone 042 (АЛГ) → page 1, пб 2012 | АЛГ |
+| `конец` | 56334 | reloads ПУСК, пб 13 (ПУСК 0705) | — |
+| anything else | 56336 | reloads ПУСК, пб 14 (ПУСК 01453) | — |
+
+`сис NAME` (57722) parses a second word and stores it in 57767, the
+current system (initially `КОД`). `лис` is stored as `АВТ`, with 57757 = 073.
+If NAME is one of АЛГ, АВТ, ЛИСП, КОД, ИСО, БЕМ (table 57734-57741), НАБЛ
+writes itself back to drum 27 zone 037 (57744) and restarts at 56010.
+Otherwise it goes to 56077. No zone is read.
+
+Reloading ПУСК is not an overlay load: page 0 is ПУСК's home, and overlays
+that run in page 0 overwrite it. ПУСК's entries from НАБЛ are at 010-015:
+пб 1036, 1073, 1042, 0705, 1453, and `уиа 1141(М12); пб 1074`.
+
+ПУСК 01453 scans its own (name, jump) table at 01463-01536 against 56222
+(sentinel 01537). A miss goes to 01416: БАВТ (zone 051) → page 33, пб 66007,
+and БАВТ handles the name (its table is at 66074-, e.g. РЕД, МАВТ, ПУЛЬТ,
+ДАЙ, ПАСКАЛ, ПАС, КОНКАТ, ДИСПАК, ФОРМ, ДУБНА, ЧИСТКА, ЛЕС, ЗАГР, …).
+Many handlers end through 01037: print the text at 01041 (`ЕСТЬ`) with
+76005, then leave through 76002 (back to НАБЛ via drum 27 zone 037).
+
+| word | ПУСК | action | overlay |
+|---|---|---|---|
+| `диалог` | 01362 | copies words with Э75, then 11372 reads zones 064-067 → pages 0-3 and 070 → page 12 | ЭХОЛОТ zones + ДЖИП |
+| `пк` | 0331 | internal; with no input prints «ПРОГ.ПК ПРИЗНАК КОНЦА ПУСТАЯ ПОСЫЛКА - ЕТХ» | — |
+| `resist`, `канал` | 01540 | internal: Э71, parse 76016, Э50 0100 …; no output in the probe | — |
+| `пз` | 01424 | Э70 with descriptor 01426 = `0062007600000000` (not a zone read), пб 64010; prints «О.К» | — |
+| `печ` | 01427 | `Э62 76` (dispak: "drop incognito"), «ЕСТЬ» | — |
+| `тур` | 01431 | plants `Э70` in cells 6-7 and runs them: unit 51 zone 0365 → page 1, zone 0364 → page 0. Unit 51 is not in pult.b6: АВОСТ 42 | unit 51 |
+| `new` | 01036 | `Э62 43`; dispak lacks it (АВОСТ 3, «Пока рано») | — |
+| `связь` | 01042 | internal; prints `00:` | — |
+| `я` | 01440 | ЗГЛВК (zone 036) → page 1, prints with Э64 01451 | ЗГЛВК |
+| `инк` | 01244 | `Э62 44` (cancel output stream), «ЕСТЬ» | — |
+| `дилос`, `dilos` | 01324 | builds a unit-40 descriptor from up to two arguments, пб 77400 (page 37): reads the zone (055 with no arguments) → page 1, writes it to drum 27 zone 020, reads unit 67 zone 077 (not mapped: АВОСТ 42) | yes |
+| `джин` | 01337 | АДСИС (zone 006) → page 36, then cell 6 reads ДЖИП (zone 070) → page 0. Prints «*** ОШИБКА АРХ. = ТАКОГО ИМЕНИ НЕТ» without arguments | ДЖИП |
+| `выд` | 01247 | `Э62 42` (flush output stream), «ЕСТЬ» | — |
+| `nf` | 01345 | `Э66 1000`…`Э66 1003` (АВОСТ 42 in dispak), then falls into `get` | (u40 z01461) |
+| `of` | 01343 | `уиа (М6); пб 6`. The probe saw an Э70 at 01672 and then БАВТ | — |
+| `cl` | 01355 | u40 zone 01461 → page 33, пб 66007 | zone 01461 |
+| `put` | 01347 | as `nf` from `Э66 1002` on | (zone 01461) |
+| `get`, `del` | 01351/01353 | u40 zone 01461 → page 33, пб 66006 | zone 01461 |
+| `inf` | 01357 | u40 zone 01461 → page 33, пб 66011 | zone 01461 |
+
+Unit 40 zone 01461 = 2248 zone 02461, which lies outside the catalog. It
+holds other code, so `cl`/`get`/`del`/`inf` fail with АВОСТ 22. The
+NF…INF group belongs to an overlay that is not on this volume.
+
+So the commands handled without an overlay are: in НАБЛ, the empty or
+non-word line, `сис`, Latin `F`, `арх` and `конец`. `арх` and `конец`
+continue in ПУСК, which is only reloaded. In ПУСК: `пк`, `resist`, `канал`,
+`пз`, `печ`, `new`, `связь`, `инк` and `выд`. `nf`, `put` and `of` start
+internally but end in a load or a crash. Everything else loads an overlay,
+and an unknown name loads БАВТ.
 
 ## Page 37 (СБОЙ) services
 
