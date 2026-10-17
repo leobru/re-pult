@@ -5,16 +5,16 @@ found in the catalog at zone 01000 of the system volumes 2248 and 2148.
 
 ## Manuals
 
-Searchable OCR transcriptions of both scanned manuals are kept in Markdown:
+Proofread transcriptions of both scanned manuals are kept in Markdown:
 
 - [Structure and maintenance](doc/PULT.md), from `PULT.pdf`.
 - [User guide](doc/PULT-User.md), from `PULT-User.pdf`.
 
 Each has a PDF-page index, separate left/right sides for book spreads, and
-links back to the scans. OCR has not been fully proofread; check exact codes,
-command spellings and special characters against the linked page image.
-Use `rg` on these files before rendering the PDF again. Reproduce with
-`python3 tools/pdfmanual.py` (Poppler, Tesseract with `rus+eng`, and Pillow).
+links back to the scans. Transcription notes mark ambiguous source text.
+Use `rg` on these files before rendering the PDF again. Edit the Markdown
+files directly. The original OCR tool, `python3 tools/pdfmanual.py` (Poppler,
+Tesseract with `rus+eng`, and Pillow), writes raw OCR to `build/manuals/ocr/`.
 
 ## Requirements
 

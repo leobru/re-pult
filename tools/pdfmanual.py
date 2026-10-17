@@ -14,7 +14,7 @@ import subprocess
 from PIL import Image
 
 
-def convert(pdf, output, cache, tesseract, jobs, dpi, corrections):
+def convert(pdf, output, cache, tesseract, jobs, dpi):
     info = subprocess.check_output(['pdfinfo', str(pdf)], text=True)
     pages = int(re.search(r'^Pages:\s+(\d+)', info, re.M)[1])
     digest = hashlib.sha256(pdf.read_bytes()).hexdigest()
@@ -65,16 +65,12 @@ def convert(pdf, output, cache, tesseract, jobs, dpi, corrections):
              'Система ПУЛЬТ-78. Общая структура и рекомендации по обслуживанию')
     relative = os.path.relpath(pdf, output.parent)
     lines = [f'# {title}', '', f'Источник: [{pdf.name}]({relative}), ВЦ АН СССР, 1978.', '',
-             '**Полный OCR-текст скана, не вычитанная транскрипция.** '
+             '**OCR-текст скана без ручной вычитки.** '
              'Все PDF-страницы включены; развороты читаются слева направо. '
              'Номера PDF-страниц отличаются от печатной нумерации. '
-             'Машинные коды, латинские/кириллические буквы, формулы, таблицы и '
-             'специальные символы могут содержать ошибки распознавания. '
-             'Пустые/графические страницы также отмечены. '
-             'Блоки text сохраняют строки и отступы OCR. '
-             'Вручную сверенные части отмечены отдельно.', '',
+             'Коды, команды, формулы и специальные символы требуют сверки со сканом.', '',
              f'SHA-256 исходного PDF: `{digest}`.', '',
-             'Воспроизведение: `python3 tools/pdfmanual.py` (Tesseract rus+eng, '
+             'Получено с помощью `tools/pdfmanual.py` (Tesseract rus+eng, '
              'Poppler, Pillow). Промежуточные результаты: `build/manuals/`.', '',
              '## Указатель PDF-страниц', '']
     lines += [f'- [PDF {n}](#pdf-{n:03d})' for n in range(1, pages + 1)]
@@ -90,11 +86,7 @@ def convert(pdf, output, cache, tesseract, jobs, dpi, corrections):
             if pdf.stem in ('PULT', 'PULT-User') and side != 'page' and n >= 3:
                 label += f' — печатная страница {2 * n - 4 + (side == "right")}'
             lines += [f'### {label}', '']
-            correction = corrections / f'{pdf.stem}-{n:03d}-{side}.md'
-            if correction.exists():
-                lines += ['_Эта сторона сверена со сканом вручную._', '',
-                          correction.read_text().strip(), '']
-            elif content.strip():
+            if content.strip():
                 fence = '`' * max(3, max((len(s) + 1 for s in re.findall(r'`+', content)), default=3))
                 lines += [f'{fence}text', content.rstrip(), fence, '']
             else:
@@ -106,17 +98,16 @@ def convert(pdf, output, cache, tesseract, jobs, dpi, corrections):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('pdf', type=Path, nargs='*', default=[Path('PULT.pdf'), Path('PULT-User.pdf')])
-    parser.add_argument('--output-dir', type=Path, default=Path('doc'))
+    parser.add_argument('--output-dir', type=Path, default=Path('build/manuals/ocr'))
     parser.add_argument('--cache', type=Path, default=Path('build/manuals'))
     parser.add_argument('--tesseract', default='tesseract')
     parser.add_argument('--jobs', type=int, default=4)
     parser.add_argument('--dpi', type=int, default=200)
-    parser.add_argument('--corrections', type=Path, default=Path('doc/manual-corrections'))
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for pdf in args.pdf:
         convert(pdf, args.output_dir / (pdf.stem + '.md'), args.cache,
-                args.tesseract, args.jobs, args.dpi, args.corrections)
+                args.tesseract, args.jobs, args.dpi)
 
 
 if __name__ == '__main__':
