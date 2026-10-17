@@ -6,6 +6,14 @@ and returns to the ПУЛЬТ command loop without an АВОСТ.
 
 ## Creating the file
 
+The runnable terminal-input fixture is [tests/algol-shch.txt](../tests/algol-shch.txt).
+It selects the existing ВАСЯ archive on unit 50, creates АТЕСТ, and runs it.
+The current fixture prints four times arctan(1), approximately π; the
+minimal recipe below prints 123.
+The file contains a real ETX byte after `//` and the required trailing
+space after `_end`; preserve both when editing. The regression test reads
+this file directly. Create the private archive first as shown below.
+
 With a private writable user archive on unit 50, zone 0100:
 
 ```text
@@ -47,7 +55,7 @@ The searchable [user guide](PULT-User.md) describes:
 
 `tests/pult-volume.py` creates `АТЕСТ` in the private archive using exactly
 this terminal-input path, invokes `алг атест`, and requires the terminal
-result `123` and no АВОСТ. Its trace also checks the translator read through
+result prefix `3.14159265358` and no АВОСТ. Its trace also checks the translator read through
 unit 57 zone 015 and the physical read from drum 22 track 034.
 Run with `make check2068 DISPAK=/path/to/dispak` outside the sandbox.
 The source disks are copied before execution and checked unchanged afterward.

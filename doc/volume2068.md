@@ -273,8 +273,10 @@ The integration tests use temporary HOME and private writable images.
 СЕРВИС help works;
 unimplemented historical OS/resource commands are not thereby implemented.
 Overlays referenced outside zones 000–117 are not reconstructed. Pascal's
-based/segmented loader mismatch with this ПУЛЬТ resident remains outside
-this relocation.
+stock resident still lacks the compatible segmentation loader. The separate
+[segmentation regression](pascal-segments.md), included in `check2068`,
+temporarily installs a checked loader, verifies LOAD/UNLOAD and relocation,
+and restores the resident; the distribution image is unchanged.
 
 МАВТ is recognized but its translator check fails with the standard unit-57
 mapping; see [МАВТ recognition and loader investigation](mavt.md).
