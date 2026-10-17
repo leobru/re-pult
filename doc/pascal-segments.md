@@ -51,7 +51,7 @@ c1ed2fc74afae5244235810fa4c44f2873c3d6ebc86be8fd2b565cded7d4cf2c
 Nine checked word replacements retarget the other monitor's register
 save/restore entries, saved register cells, temporary words and restart to
 those of the current ПУЛЬТ. These replacements reproduce the adaptation
-previously implemented in `pasauto-re/mkloader2.py`; the test has no runtime
+in `pasauto-re/mkloader2.py`; the test has no runtime
 dependency on that external repository and does not decode instructions.
 The data mask at 077436 is copied unchanged. Only words 077040–077677 are
 replaced; the rest of the loader fixture comes from the current resident.

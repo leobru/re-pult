@@ -16,6 +16,12 @@ Use `rg` on these files before rendering the PDF again. Edit the Markdown
 files directly. The original OCR tool, `python3 tools/pdfmanual.py` (Poppler,
 Tesseract with `rus+eng`, and Pillow), writes raw OCR to `build/manuals/ocr/`.
 
+The address-level analysis of ПУСК is in [doc/pusk.md](doc/pusk.md).
+The command loop, parsers and terminal formatter in НАБЛ are described in
+[doc/nabl.md](doc/nabl.md).
+The resident services and scanner in СБОЙ are described in
+[doc/sboy.md](doc/sboy.md).
+
 ## Requirements
 
 - `dispak` and `besmtool` (<https://github.com/besm6/dispak>), with volumes
@@ -28,6 +34,9 @@ Tesseract with `rus+eng`, and Pillow), writes raw OCR to `build/manuals/ocr/`.
 ```sh
 make            # extract images, trace sessions/*.txt, write build/*.lst
 make diff       # catalog entries that differ between 2148 and 2248
+make pusk       # static ПУСК listing and full zone dump, without dispak
+make nabl       # static НАБЛ listing at 056000 and full source zone dump
+make sboy       # static СБОЙ listing at 076000 and full source zone dump
 tools/catalog.py 2248              # print the ПУЛЬТ catalog
 tools/loads.sh < sessions/лес.txt  # exchanges (Э70) of a session
 tools/findpage.py 2148 2248        # zones resembling page 37
@@ -37,6 +46,8 @@ tools/findpage.py 2148 2248        # zones resembling page 37
 for each zone of a multi-zone entry). `build/<NAME>.lst` is its listing at
 the address where it runs, seeded with the addresses it executed in the
 sessions. See AGENTS.md for what is known so far.
+`make pusk`, `make nabl` and `make sboy` instead use explicit static entries and data
+boundaries from their symbol files.
 
 ## Volume 2068
 
