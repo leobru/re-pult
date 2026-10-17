@@ -20,3 +20,12 @@
   ignored. АЛГ issues `Э62 040302`: that should give offset 0300, so its
   translator image is 2248 zone 0315. dispak uses 0302 and reads zone 0317,
   so `алг` fails with «ПЛОХО С Э60» (see AGENTS.md, «АЛГ»).
+- `--725` should also mask zone numbers to 01777 (`(zone + offset) &
+  01777`), as `BESM6_SMALL_DISKS` does: ddio() (extra.c) picks the mask
+  from that variable only, not from `SMALL_DISKS()`. БАВТ's `бавт` sets unit
+  30's offset to 0200 and reads zone 01747, which on a 7.25 MB disk is zone
+  0147 (БЕМШ). Without the mask, dispak reads zone 02147.
+- `Э72` rename (037) and exchange (030) reject a scratch tape (`ЛЕНТ 30(1С)`):
+  they test `disks[u].diskno`, which is 0 for scratch volumes, instead of
+  also `diskh`. `бавт` exchanges units 40 and 30 (БАВТ 01302) and stops
+  with АВОСТ 56 «ДАЙ РАБ.В ЭК.РЕС».

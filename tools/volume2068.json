@@ -1,0 +1,105 @@
+{
+  "description": "PULT at 000; Pascal at 100. All zone and word addresses are octal.",
+  "ranges": [
+    {
+      "volume": "2248",
+      "start": "1000",
+      "destination": "000",
+      "count": "120",
+      "sha256": "67b8f757e2727aa0f8d7d9ce3524e476bc0afdcb9a7b1b137102598c41658d04"
+    },
+    {
+      "volume": "2148",
+      "start": "1031",
+      "destination": "031",
+      "count": "3",
+      "sha256": "add2c0e76f3fe473d13473d8593b313d1ce8fb7b6c1b96fffe5cc11a339e3963"
+    },
+    {
+      "volume": "2148",
+      "start": "1071",
+      "destination": "071",
+      "count": "2",
+      "sha256": "33d72f74036eed12b4e4937aac5de9dc5fe9f14033aa37de8277f55e7d79ba63"
+    },
+    {
+      "volume": "2148",
+      "start": "1101",
+      "destination": "101",
+      "count": "14",
+      "sha256": "d6f0e6bea47f50f294fb23757a0fc66ed9b23d64478be9127607494ee9b9e498"
+    }
+  ],
+  "patches": [
+    {
+      "zone": "000",
+      "word": "0016",
+      "old": "000007000012",
+      "new": "00000700000f",
+      "reason": "РЕЗРВ1 ends at 025; expose BD at 026 and keep БАНДИТ at 027 internal"
+    },
+    {
+      "zone": "000",
+      "word": "0075",
+      "old": "000000000000",
+      "new": "223f0f0f0f0f",
+      "reason": "Add callable BD dispatcher to the PULT catalog"
+    },
+    {
+      "zone": "000",
+      "word": "0076",
+      "old": "000040000000",
+      "new": "000016000001",
+      "reason": "BD occupies zone 026, length 1"
+    },
+    {
+      "zone": "000",
+      "word": "0077",
+      "old": "aa7ff9da0070",
+      "new": "000000000000",
+      "reason": "Terminate PULT catalog after BD"
+    },
+    {
+      "zone": "000",
+      "word": "0377",
+      "old": "00000000003d",
+      "new": "00000000003f",
+      "reason": "Extend archive lookup bound to include BD before the new sentinel"
+    },
+    {
+      "zone": "000",
+      "word": "0065",
+      "old": "302527302202",
+      "new": "232e302e312a",
+      "reason": "Rename РЕЗРВ2 to ГОРОСК; retain start 071 and length 2"
+    },
+    {
+      "zone": "042",
+      "word": "0135",
+      "old": "0940c2032000",
+      "new": "0940c0032000",
+      "reason": "ALG: unit 40 offset 0302 -> 0300"
+    },
+    {
+      "zone": "042",
+      "word": "0137",
+      "old": "095ec2032000",
+      "new": "095ec0032000",
+      "reason": "ALG: unit 57 offset 0302 -> 0300"
+    },
+    {
+      "zone": "114",
+      "word": "1105",
+      "old": "00800a10ec8c",
+      "new": "00800a100035",
+      "reason": "December compiler: restore lookup reset after variable declarations"
+    },
+    {
+      "zone": "114",
+      "word": "1106",
+      "old": "45326e000000",
+      "new": "ec8c6e000000",
+      "reason": "December compiler: restore call to getT at 06156"
+    }
+  ]
+}

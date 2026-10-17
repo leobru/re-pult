@@ -62,3 +62,58 @@ clean:
 .PRECIOUS: build/%.trace
 # dispak sessions share ~/.besm6/input_queue
 .NOTPARALLEL:
+
+# Relocated PULT and Pascal archives on volume 2068. The original pult.b6
+# and 2250 reconstruction above remain available for disassembly sessions.
+PYTHON       ?= python3
+DISPAK       ?= dispak
+SOURCE_DISKS ?= /usr/local/share/besm6
+SYSTEM_VOLUME ?= 2248
+VOLUME_DIR   := build/volumes
+INSTALL_DISKS ?= $(HOME)/.besm6
+
+2068: $(VOLUME_DIR)/2068 $(VOLUME_DIR)/2068.json
+
+$(VOLUME_DIR)/2148: $(SOURCE_DISKS)/2148
+	mkdir -p $(VOLUME_DIR)
+	cp -fp $< $@
+
+$(VOLUME_DIR)/2248: $(SOURCE_DISKS)/2248
+	mkdir -p $(VOLUME_DIR)
+	cp -fp $< $@
+
+$(VOLUME_DIR)/2068: tools/make2068.py tools/volume2068.json $(VOLUME_DIR)/2148 $(VOLUME_DIR)/2248
+	$(PYTHON) tools/make2068.py --2148 $(VOLUME_DIR)/2148 --2248 $(VOLUME_DIR)/2248 --output $@
+
+$(VOLUME_DIR)/2068.json: $(VOLUME_DIR)/2068
+	@test -f $@ || $(PYTHON) tools/make2068.py --2148 $(VOLUME_DIR)/2148 --2248 $(VOLUME_DIR)/2248 --output $(VOLUME_DIR)/2068
+
+check2068: 2068
+	$(PYTHON) tests/pult-volume.py "$(DISPAK)" $(VOLUME_DIR)
+
+build/pult2068/2148 build/pult2068/2248: build/pult2068/%: $(VOLUME_DIR)/%
+	mkdir -p build/pult2068
+	cp -p $< $@
+	chmod u+w $@
+
+build/pult2068/2068: $(VOLUME_DIR)/2068
+	mkdir -p build/pult2068
+	cp -p $< $@
+	chmod u+w $@
+
+pult2068: 2068 build/pult2068/$(SYSTEM_VOLUME) build/pult2068/2068
+	sed 's/57(2248-371)/57($(SYSTEM_VOLUME)-371)/' pult2068.b6 > build/pult2068/pult.b6
+	$(DISPAK) $(DISPAKFLAGS) --path=$(abspath build/pult2068):$(abspath $(SOURCE_DISKS)) build/pult2068/pult.b6
+
+.PHONY: 2068 check2068 pult2068
+
+# Preserve an existing installed image and its provenance as a pair.
+install2068: 2068
+	mkdir -p "$(INSTALL_DISKS)"
+	@if test -e "$(INSTALL_DISKS)/2068"; then \
+	    echo "$(INSTALL_DISKS)/2068 already exists; left unchanged"; \
+	else \
+	    cp $(VOLUME_DIR)/2068 $(VOLUME_DIR)/2068.json "$(INSTALL_DISKS)/"; \
+	fi
+
+.PHONY: install2068
