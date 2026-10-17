@@ -51,6 +51,42 @@ build/%.lst: build/%.trace images/$(VOL)/.done $(wildcard syms/*.sym)
 	$(DIS) -b -a$$load -e$$load --trace=build/$*.trace \
 	    $(if $(wildcard syms/$*.sym),-n syms/$*.sym) images/$(VOL)/$*.bin > $@
 
+# ПУСК has explicit static entries and data boundaries; no emulator run needed.
+pusk: build/ПУСК.lst build/ПУСК.dump
+build/ПУСК.lst: images/$(VOL)/.done syms/ПУСК.sym
+	mkdir -p build
+	$(DIS) -b -a0 -e40 -n syms/ПУСК.sym images/$(VOL)/ПУСК.bin > $@
+
+build/ПУСК.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01040 --length=1 > $@
+
+.PHONY: pusk
+
+# НАБЛ uses M10 = 056000; static entries include the input trampoline at 57037.
+nabl: build/НАБЛ.lst build/НАБЛ.dump
+build/НАБЛ.lst: images/$(VOL)/.done syms/НАБЛ.sym
+	mkdir -p build
+	$(DIS) -b -a56000 -e56010 -n syms/НАБЛ.sym images/$(VOL)/НАБЛ.bin > $@
+
+build/НАБЛ.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01041 --length=1 > $@
+
+.PHONY: nabl
+
+# СБОЙ is the resident page at 076000; entries and work areas are explicit.
+sboy: build/СБОЙ.lst build/СБОЙ.dump
+build/СБОЙ.lst: images/$(VOL)/.done syms/СБОЙ.sym
+	mkdir -p build
+	$(DIS) -b -a76000 -e76000 -n syms/СБОЙ.sym images/$(VOL)/СБОЙ.bin > $@
+
+build/СБОЙ.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01035 --length=1 > $@
+
+.PHONY: sboy
+
 diff: images
 	@for f in images/2248/*.bin; do n=$$(basename $$f); \
 	  cmp -s $$f images/2148/$$n || echo "differs: $$n"; done

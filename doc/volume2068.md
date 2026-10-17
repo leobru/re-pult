@@ -178,7 +178,6 @@ assembler fallback. All three remain unchanged in 2068.
 ПАСК reads the assembler through **unit 57**, retaining descriptor `0570007`.
 Mounting `лент 57(2248-371)` (or `2148-371`) maps zones 007–013 to
 system-volume zones **0400–0404**, because `0371 + 007 = 0400`.
-The earlier patch redirecting the descriptor to unit 40 has been removed.
 Archive zones 007–013 remain preserved as archive contents; compilation
 does not depend on that duplicate assembler image.
 

@@ -145,9 +145,11 @@ unit and 12-15 the zone (see `tools/loads.sh`).
 Verified with `tools/probe.sh` on 2248, one command per session.
 
 НАБЛ (page 27; position-independent, М10 = 056000) reads a line with Э71
-(56540-56551, then 56053), and 56155 parses the first word into 56222. The
-word is GOST, right-justified, padded on the left with 0377 bytes, at most 6
-letters (Cyrillic and the Latin letters up to Z, codes 040-0114). If the line
+(56540-56551, then 56053), and 56155 parses the first word into 56222-56224.
+The lexer retains up to 18 GOST characters; dispatch compares only the first
+six in 56222. Each word is right-justified and padded on the left with 0377
+bytes. The first character must have code 040-0114; continuation also accepts
+digits. See [doc/nabl.md](doc/nabl.md). If the line
 does not start with a letter, the word stays all ones. 56021 scans the
 (name, jump) pairs at 56027-56075. The match must be exact: `кон`,
 `конецабв` and `сисалг` are unknown names. The sentinel 56075 (`0…0377`)
@@ -356,10 +358,12 @@ whether there is a terminal (76413):
   lookup (76457-76466, two passes, M4 = -2) and then the ≥ 0137 octal
   test. The setup at 76671 decides what they do: if 76413 ≠ 0 (there is
   a terminal), 76677-76701 overwrite the first table words 76770-76771
-  with all ones, so the table is empty and nothing is substituted. They
+  with all ones, disabling only the `;` and `!` replacements. The remaining
+  table entries still work, as checked by a direct 76005 probe; see
+  [doc/sboy.md](doc/sboy.md). They
   also replace the escape prefix 76756 (`.`) and 76763 with 0132 (`_`)
-  from 76764. So the `.`-digraphs are only for output without a terminal,
-  i.e. for a printer. With `тел`, `xyz` prints «ХУZ   !».
+  from 76764. With a terminal the remaining replacements use `_`, e.g.
+  `×` prints `_Х`. With `тел`, `xyz` prints «ХУZ   !».
   The other terminal-dependent setting is the line length. М5 counts the characters (76745 `слиа 1(5)`), and the line
   is broken when М5 wraps past 077777 (76504-76506: `счи 5; сда 104; пе`).
   It starts at 77677, i.e. 0101 = 65 characters, or at 77661 = 79 when
@@ -524,15 +528,13 @@ from Э60 to ПУЛЬТ.
    errors on the bytes after the text (0172 end, a `$` line, or a line of
    backquotes didn't end it) and stops at 02011 (АВОСТ 24). In АЛГ's card
    routine (66020-66146), 0175 becomes 0174, and 0127 (`◇`, `$`) at the
-   start of a line starts a control line (66037-66071). How a ПУЛЬТ ALGOL
-   text must end, and how text gets into the buffer, is still open: lines
-   typed after `сис алг` did not reach it.
+   start of a line starts a control line (66037-66071). The supported
+   editor input and termination format is described below.
 6. **`тел`** does not change any of this. The page-1 instruction trace of
    the `алг` session (844 steps) and the output are identical with and
    without `тел`.
 
-**Later 2068 verification:** the earlier input/termination uncertainty above
-is resolved for a complete small program. `сис алг`, `з NAME(1)=тт`,
+**ALG source format on 2068:** `сис алг`, `з NAME(1)=тт`,
 ``_begin output(`Щ',`z4d',123); _end ``, then `//` + ETX, and
 `алг NAME` compile and execute successfully, printing 123. Keep the spaces
 after reserved words; use OUTPUT parameter Щ for the terminal copy.
@@ -626,8 +628,7 @@ None of the probes changed 2345 (unit 50, the only writable volume).
 
    With the current dispak (`~/git/dispak`, ac49c0e), the interception
    happens: the first `Э60 43(6)` (01074) enters 75265 with `opcode & 037`
-   in D−10. (Before that fix D−10 held only the RAU bits, so the result was
-   «Э074».) The Э60 path then reads unit 42, which is not in pult.b6:
+   in D−10. The Э60 path then reads unit 42, which is not in pult.b6:
    АВОСТ 42. A scratch volume as unit 42 with the `fortran-dubna` test deck at zone 01523 (GOST, 0175 line ends, 0172) got
    further: the cards were accepted, and the monitor read its drums and
    issued its first `Э64 104(7)` (02626). Its info word `6400000074077777`
@@ -635,7 +636,7 @@ None of the probes changed 2345 (unit 50, the only writable volume).
    0 (a line of garbage). On the way out, М1 = 5, so `пе 1335(1)` jumped
    to 01342 and the run ended with «ВЫВОД ЗАПРЕЩЕН», АВОСТ 31 at 40070.
 
-Earlier setups failed sooner. Without `физо` the physical read failed. With
+Without `физо` the physical read fails. With
 the physical drums on unit 40 or on a unit at offset 0300, the СП read the
 wrong zone and ran into leftovers (division by zero, АВОСТ 22). Without
 `спец`, КОНТРОЛЬ КОМАНДЫ at 00423.
@@ -667,16 +668,23 @@ These are used by ПАСКАЛ, compiled Pascal programs and the loader:
 - 76000 пб 76127 (restart), 76001, 76002 exit to ПУЛЬТ, 76003 пб 76066,
   76004 пб 76074, 76005 print, 76006 read zones (parameter block
   77770-77774), 76007 пб 76104, 76010 пб 76100.
-- 76015 argv (ржа 0; пб 77031), 76016 command-line parse (ржа 0;
-  пб 77043; the parse body is 77043-77073 and calls 77162, 77313).
+  The body of 76002 reads only НАБЛ from drum 27:037; it does not also
+  reload СБОЙ from 27:031. The loader reserves БУФ for direct drum-27
+  reads starting at zone 0, bypassing the archive catalog.
+- 76015 configurable scanner (ржа 0; пб 77031), 76016 standard scanner
+  (ржа 0; пб 77043). The working configuration is at 77032-77042;
+  the standard reference table starts at 77331 and values at 77371.
+  See [doc/sboy.md](doc/sboy.md) for the interfaces and verified token tables.
 - 76066 save registers, 76074 restore registers. Cells: 76123 temp,
   76124 = 2, 76125 = 1. Register save area 76144-76163.
-- 76312 is the `INР GF` hook the compiler emits in modeDe (`ПВ 76312`).
+- The compiler emits `ПВ 76312` for `INР GF` in modeDe, but the original
+  resident contains diagnostic text there. Check runtime installation
+  before interpreting that address as an executable entry.
 - Pascal error texts at 76324-76363 (`РАSСАL`, «ИНФ О СТЕКЕ…»).
 - 77040-77106 is ПУЛЬТ code and data. The Pascal compiler (ver. 9) expects
   the dynamic loader ЗАГР there (`ЗАГР=77040, LOAD, UNLOAD, СН`,
-  `DS=СН(3), Z1Z…Z7, ПА, ВИ, …`), so based (X+) programs cannot run under
-  this ПУЛЬТ.
+  `DS=СН(3), Z1Z…Z7, ПА, ВИ, …`). Based (X+) programs require a temporary
+  compatible loader; see [doc/pascal-segments.md](doc/pascal-segments.md).
 
 ## Other page-37 images
 
