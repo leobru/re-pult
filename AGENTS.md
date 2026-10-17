@@ -11,6 +11,11 @@ terminal I/O, and 064 is printing.
 
 ## Tools
 
+- Search `doc/PULT.md` and `doc/PULT-User.md` before rendering the scanned
+  manuals again. These are full OCR transcriptions, indexed by PDF page and
+  left/right side. Verify exact codes and special symbols against the linked
+  scans; the OCR text has not been fully proofread. Regenerate with
+  `python3 tools/pdfmanual.py` (Poppler, Tesseract rus+eng, Pillow).
 - Disassembler: `~/git/leobru/dispak-tools/disbesm6`, built from
   `disbesm6.cc`. It is newer than `/usr/local/bin/disbesm6`. Ignore the old
   `~/git/besm6/dispak/disbesm6/disbesm6.c`.
@@ -228,7 +233,7 @@ with no arguments and no `арх`. Every name first reloads ПУСК and loads �
 |---|---|---|
 | `ред`, `м` | НОВРЕД (075-077) → pages 0-2, АДСИС → 36 | «ГДЕ ЖЕ ИМЯ ?» |
 | `мавт` | — | «НЕТ СИМВОЛОВ КОНЦА» |
-| `бавт` | unit 30 zone 01747 → page 0 (not mapped) | «Внутр.ош.эмул» |
+| `бавт` | БЕМШ: unit 30 zones 01747-01752 → pages 0, 34, 36, 37, see below | «ИДТИ?» |
 | `пульт` | ПУЛЬТ (002) → page 0, ЗГЛВК → page 1 | «ШИФР  ЛЕНТ» |
 | `дай` | ДАЙ (005) → page 0 | «НЕ ДАМ» |
 | `паскал`, `пас` | ПАСК (050) → page 33, АДСИС, the translator zones 0101-0114 → pages 0-13. `пас` first reads unit 17 zone 037 | «ПАСКАЛЬ-АВТОКОД 9.(17.05.88)» |
@@ -249,6 +254,21 @@ with no arguments and no `арх`. Every name first reloads ПУСК and loads �
 | `эхолот` | ЭХОЛОТ (064-067) → pages 0-3, АДСИС | «**** Э Х О Л О Т ****» |
 | `струк` | СТРУК (073-074) → pages 0-1, АДСИС | «-=* СТРУКТУРА ПРОГРАММЫ *=-» |
 | `сер`, `сервис` | СЕРВИС (031-033) → pages 0-2, АДСИС | «ПАСКАЛЬ-СЕРВИС» |
+
+`бавт` (67030 → 67064) sets the Э72 interception address (`Э72 4` with
+KEYE72), then moves a system volume to unit 30 with one of the Э72 words
+at 67277-67302. Which one depends on whether unit 40 is 2068 (`Э50 105`,
+67404) and whether unit 30 is mounted. On 2068 it renames 57 → 30 (67277)
+or exchanges them (67300). Otherwise it renames 40 → 30 (67301) or
+exchanges them (67302). Then it sets unit 30's offset to 0200 (`Э50 112`)
+and reads zone 01747 into page 0 and jumps to 01100. On a 7.25 MB disk the
+zone number is 10 bits, so that is zone (0200 + 01747) & 01777 = 0147 of
+the system volume: БЕМШ (re-aitm's СП 0100 system 1 uses the same zone).
+It reads zones 01750-01752 into pages 34, 36 and 37, reads drum 12
+zone 0 into pages 4 and 5, prints them and asks «ИДТИ?». This needs two
+dispak fixes (TODO.md): masking zone numbers to 01777 under `--725`,
+and Э72 rename/exchange with the scratch unit 30. Until then `бавт` stops
+in `Э72` with АВОСТ 56.
 
 So `мавт`, `конкат`, `диспак`, `форм`, `пп`, `ппн`, `па`, `зкан`, `сбуф` and
 `порц` are handled inside БАВТ. The others load a catalog entry or an
@@ -510,6 +530,13 @@ from Э60 to ПУЛЬТ.
 6. **`тел`** does not change any of this. The page-1 instruction trace of
    the `алг` session (844 steps) and the output are identical with and
    without `тел`.
+
+**Later 2068 verification:** the earlier input/termination uncertainty above
+is resolved for a complete small program. `сис алг`, `з NAME(1)=тт`,
+``_begin output(`Щ',`z4d',123); _end ``, then `//` + ETX, and
+`алг NAME` compile and execute successfully, printing 123. Keep the spaces
+after reserved words; use OUTPUT parameter Щ for the terminal copy.
+See `doc/algol.md` and `tests/pult-volume.py`.
 
 ## ДАЙ (zone 005)
 
