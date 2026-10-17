@@ -90,6 +90,10 @@ $(VOLUME_DIR)/2068.json: $(VOLUME_DIR)/2068
 
 check2068: 2068
 	$(PYTHON) tests/pult-volume.py "$(DISPAK)" $(VOLUME_DIR)
+	$(PYTHON) tests/pascal-segments.py --dispak "$(DISPAK)" --volumes $(VOLUME_DIR)
+
+checksegments: 2068
+	$(PYTHON) tests/pascal-segments.py --dispak "$(DISPAK)" --volumes $(VOLUME_DIR)
 
 build/pult2068/2148 build/pult2068/2248: build/pult2068/%: $(VOLUME_DIR)/%
 	mkdir -p build/pult2068
@@ -105,7 +109,7 @@ pult2068: 2068 build/pult2068/$(SYSTEM_VOLUME) build/pult2068/2068
 	sed 's/57(2248-371)/57($(SYSTEM_VOLUME)-371)/' pult2068.b6 > build/pult2068/pult.b6
 	$(DISPAK) $(DISPAKFLAGS) --path=$(abspath build/pult2068):$(abspath $(SOURCE_DISKS)) build/pult2068/pult.b6
 
-.PHONY: 2068 check2068 pult2068
+.PHONY: 2068 check2068 checksegments pult2068
 
 # Preserve an existing installed image and its provenance as a pair.
 install2068: 2068

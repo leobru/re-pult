@@ -46,6 +46,7 @@ emulator build. See [the zone comparison and repair report](doc/volume2068.md).
 ```sh
 make 2068                         # build/volumes/2068 and 2068.json
 make check2068                    # isolated integration tests
+make checksegments                # Pascal LOAD/UNLOAD and relocation
 make pult2068                     # interactive session with writable private copies
 make pult2068 SYSTEM_VOLUME=2148  # use 2148 for the system volume instead
 make install2068                  # install image/provenance in ~/.besm6 if absent
@@ -61,3 +62,7 @@ offset 0371. `SYSTEM_VOLUME=2148` selects 2148 with the same offset.
 resolve to system-volume zones 0400–0404.
 Set `INSTALL_DISKS` to override the installation directory.
 The original `pult.b6` and 2250 workflow remain available.
+
+The [Pascal segmentation test](doc/pascal-segments.md) uses a temporary
+compatibility loader, exercises external calls in both directions, unloads
+and reloads at a different address, and restores the original resident.

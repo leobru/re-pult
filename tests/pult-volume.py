@@ -166,10 +166,8 @@ def main():
         # Let ПУЛЬТ encode and save the source in СИС АЛГ mode. A space
         # terminates each reserved word; Щ sends OUTPUT to the terminal.
         session('ALG file compile and execute',
-                'арх вася,50,100,100\nсис алг\nз атест(1)=тт\n'
-                "_begin output(`Щ',`z4d',123); _end \n//\x03\n"
-                'алг атест\nконец\n',
-                ['МСВ   АТЕСТ', '     123 '], deck,
+                (ROOT / 'tests/algol-shch.txt').read_text(),
+                ['МСВ   АТЕСТ', '3.14159265358'], deck,
                 trace_words=('0010000000570015', '0014010000220034'))
         # GOST fixture: _PROGRAM TEST; _BEGIN WRITELN(123); _END.
         letters = dict(zip('ABCDEFGHIJKLMNOPQRSTUVWXYZ',
