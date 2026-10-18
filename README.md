@@ -21,6 +21,16 @@ The command loop, parsers and terminal formatter in НАБЛ are described in
 [doc/nabl.md](doc/nabl.md).
 The resident services and scanner in СБОЙ are described in
 [doc/sboy.md](doc/sboy.md).
+The ДАЙ service monitor, its 15 subcommands and ФОРТ extracode handler are
+described in [doc/dai.md](doc/dai.md).
+The Pascal runtime АДСИС, its entry vector, files and memory are described in
+[doc/adsis.md](doc/adsis.md).
+The ALGOL `_БИБ` lookup and all 182 standard-library names, addresses and
+dependencies are described in [doc/algol-library.md](doc/algol-library.md).
+The extracted УППBULLM20 card-package converter and its damaged prefix are
+analysed in [doc/upp-bullm20.md](doc/upp-bullm20.md).
+The ALGOL NEW/НОВ interfaces to БАНДИТ, their name conversion and error
+handlers are described in [doc/algol-new.md](doc/algol-new.md).
 
 ## Requirements
 
@@ -37,6 +47,9 @@ make diff       # catalog entries that differ between 2148 and 2248
 make pusk       # static ПУСК listing and full zone dump, without dispak
 make nabl       # static НАБЛ listing at 056000 and full source zone dump
 make sboy       # static СБОЙ listing at 076000 and full source zone dump
+make dai        # static ДАЙ listing, including batch-job and ФОРТ code
+make adsis      # static АДСИС listing at 074000 and full source zone dump
+make checkadsis # Pascal runtime, file-boundary and error-path checks on private disks
 tools/catalog.py 2248              # print the ПУЛЬТ catalog
 tools/loads.sh < sessions/лес.txt  # exchanges (Э70) of a session
 tools/findpage.py 2148 2248        # zones resembling page 37
@@ -46,7 +59,8 @@ tools/findpage.py 2148 2248        # zones resembling page 37
 for each zone of a multi-zone entry). `build/<NAME>.lst` is its listing at
 the address where it runs, seeded with the addresses it executed in the
 sessions. See AGENTS.md for what is known so far.
-`make pusk`, `make nabl` and `make sboy` instead use explicit static entries and data
+`make pusk`, `make nabl`, `make sboy`, `make dai` and `make adsis`
+instead use explicit static entries and data
 boundaries from their symbol files.
 
 ## Volume 2068
