@@ -111,6 +111,78 @@ build/АДСИС.dump: images/$(VOL)/.done
 
 .PHONY: adsis
 
+# АВТПАК has a relative driver at 052000 and a packet reader at 004000.
+avtpak: build/АВТПАК.lst build/АВТПАК-пакет.lst build/АВТПАК.dump
+build/АВТПАК.lst: images/$(VOL)/.done syms/АВТПАК.sym
+	mkdir -p build
+	$(DIS) -b -a52000 -e52010 -e52011 -n syms/АВТПАК.sym images/$(VOL)/АВТПАК.bin > $@
+
+build/АВТПАК-пакет.lst: images/$(VOL)/.done syms/АВТПАК-пакет.sym
+	mkdir -p build
+	$(DIS) -b -a4000 -e4040 -n syms/АВТПАК-пакет.sym images/$(VOL)/АВТПАК.bin > $@
+
+build/АВТПАК.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01047 --length=1 > $@
+
+.PHONY: avtpak
+
+# The callable ПУЛЬТ generator and the retained ПУЛЬТФ image.
+launchers: build/ПУЛЬТ.lst build/ПУЛЬТФ.lst build/ПУЛЬТ.dump build/ПУЛЬТФ.dump
+build/ПУЛЬТ.lst: images/$(VOL)/.done syms/ПУЛЬТ.sym
+	mkdir -p build
+	$(DIS) -b -a0 -e7 -n syms/ПУЛЬТ.sym images/$(VOL)/ПУЛЬТ.bin > $@
+
+build/ПУЛЬТФ.lst: images/$(VOL)/.done syms/ПУЛЬТФ.sym
+	mkdir -p build
+	$(DIS) -b -a0 -e10 -n syms/ПУЛЬТФ.sym images/$(VOL)/ПУЛЬТФ.bin > $@
+
+build/ПУЛЬТ.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01002 --length=1 > $@
+
+build/ПУЛЬТФ.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01004 --length=1 > $@
+
+.PHONY: launchers
+
+# АЦПУК loads the monitor's formatter quarter dynamically from drum 27.
+acpuk: build/АЦПУК.lst build/АЦПУК.dump
+build/АЦПУК.lst: images/$(VOL)/.done syms/АЦПУК.sym
+	mkdir -p build
+	$(DIS) -b -a74000 -e74000 -n syms/АЦПУК.sym images/$(VOL)/АЦПУК.bin > $@
+
+build/АЦПУК.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01003 --length=1 > $@
+
+.PHONY: acpuk
+
+# СПИС shares two pages between the С and Р commands.
+spis: build/СПИС.lst build/СПИС.dump
+build/СПИС.lst: images/$(VOL)/.done syms/СПИС.sym
+	mkdir -p build
+	$(DIS) -b -a0 -e10 -e2010 -n syms/СПИС.sym images/$(VOL)/СПИС.bin > $@
+
+build/СПИС.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01045 --length=2 > $@
+
+.PHONY: spis
+
+# БАВТ is the command dispatcher and launcher in page 33.
+bavt: build/БАВТ.lst build/БАВТ.dump
+build/БАВТ.lst: images/$(VOL)/.done syms/БАВТ.sym
+	mkdir -p build
+	$(DIS) -b -a66000 -e66007 -n syms/БАВТ.sym images/$(VOL)/БАВТ.bin > $@
+
+build/БАВТ.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01051 --length=1 > $@
+
+.PHONY: bavt
+
 diff: images
 	@for f in images/2248/*.bin; do n=$$(basename $$f); \
 	  cmp -s $$f images/2148/$$n || echo "differs: $$n"; done

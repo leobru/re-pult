@@ -25,6 +25,17 @@ The ДАЙ service monitor, its 15 subcommands and ФОРТ extracode handler ar
 described in [doc/dai.md](doc/dai.md).
 The Pascal runtime АДСИС, its entry vector, files and memory are described in
 [doc/adsis.md](doc/adsis.md).
+The retained АВТПАК module, its four-zone ITM assembler driver and ПАКЕТ
+command-chain interpreter are described in [doc/avtpak.md](doc/avtpak.md).
+The ПУЛЬТ launcher generator, its passport templates and generated loader
+are described in [doc/pult.md](doc/pult.md). The retained ПУЛЬТФ image
+and its unrelated code fragments are examined in [doc/pultf.md](doc/pultf.md).
+The АЦПУК output-file viewer, part addressing, character conversion and
+formatter compatibility are described in [doc/acpuk.md](doc/acpuk.md).
+The БАВТ dispatcher, every command handler, Pascal launch frames and
+translator return paths are described in [doc/bavt.md](doc/bavt.md).
+The СПИС text reader/editor, commands С/Р, encodings and context search are
+described in [doc/spis.md](doc/spis.md).
 The ALGOL `_БИБ` lookup and all 182 standard-library names, addresses and
 dependencies are described in [doc/algol-library.md](doc/algol-library.md).
 The extracted УППBULLM20 card-package converter and its damaged prefix are
@@ -49,6 +60,11 @@ make nabl       # static НАБЛ listing at 056000 and full source zone dump
 make sboy       # static СБОЙ listing at 076000 and full source zone dump
 make dai        # static ДАЙ listing, including batch-job and ФОРТ code
 make adsis      # static АДСИС listing at 074000 and full source zone dump
+make avtpak     # old АВТ driver at 052000 and ПАКЕТ reader at 004000
+make launchers  # ПУЛЬТ generator and the retained ПУЛЬТФ image
+make acpuk      # АЦПУ output-file viewer at 074000
+make spis       # С/Р text editor, both pages at 00000–03777
+make bavt       # third command dispatcher and launchers at 066000
 make checkadsis # Pascal runtime, file-boundary and error-path checks on private disks
 tools/catalog.py 2248              # print the ПУЛЬТ catalog
 tools/loads.sh < sessions/лес.txt  # exchanges (Э70) of a session
@@ -59,7 +75,8 @@ tools/findpage.py 2148 2248        # zones resembling page 37
 for each zone of a multi-zone entry). `build/<NAME>.lst` is its listing at
 the address where it runs, seeded with the addresses it executed in the
 sessions. See AGENTS.md for what is known so far.
-`make pusk`, `make nabl`, `make sboy`, `make dai` and `make adsis`
+`make pusk`, `make nabl`, `make sboy`, `make dai`, `make adsis`, `make avtpak`
+`make launchers` and `make acpuk`
 instead use explicit static entries and data
 boundaries from their symbol files.
 
