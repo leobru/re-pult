@@ -86,9 +86,9 @@ with a zero word. `tools/catalog.py` prints it.
 | name | zone | len | known role / load page (from traces) |
 |---|---|---|---|
 | РРR | 001 | 1 | `ррr` (Latin R) via БАВТ: page 0, +АДСИС |
-| ПУЛЬТ | 002 | 1 | `пульт` via БАВТ: page 0, then ЗГЛВК → page 1; prints «ШИФР  ЛЕНТ» |
-| АЦПУК | 003 | 1 | `ацпу` via БАВТ: page 36, then drum 27 zone 0137 → page 36 |
-| ПУЛЬТФ | 004 | 1 | |
+| ПУЛЬТ | 002 | 1 | `пульт` via БАВТ: page 0, then ЗГЛВК → page 1; both launcher forms, see doc/pult.md |
+| АЦПУК | 003 | 1 | `ацпу` via БАВТ: page 36; restores formatter quarter 074400–074777 from drum 27 track 037 sector 1; see doc/acpuk.md |
+| ПУЛЬТФ | 004 | 1 | historical launcher name; current image contains mixed parser/interpreter fragments, no working generator established; see doc/pultf.md |
 | ДАЙ | 005 | 1 | `дай SUB args`, page 0; assembly, no АДСИС; see «ДАЙ» below |
 | АДСИС | 006 | 1 | Pascal runtime library, page 36 (074000); the compiler's ИА=74000 table |
 | РЕЗРВ1 | 007 | 22 | pool of overlays; `алг` reads zone 015 into page 0, but no code of it runs before the session stops (ПЛОХО С Э60); per-zone pieces `РЕЗРВ1+k` |
@@ -101,8 +101,8 @@ with a zero word. `tools/catalog.py` prints it.
 | НАБЛ | 041 | 1 | read into page 1, copied via drum 27 track 37 to **page 27 (056000)**: command loop (terminal Э71 at 56514/56550/56053) |
 | АЛГ | 042 | 2 | `алг`: zone 042 → page 1, 043 → page 33; loads and patches the ALGOL translator, see «АЛГ» below |
 | СЛУЖ | 044 | 1 | archive-catalog commands `з`/`зап`, `ктл`, `упор`, `искл`; page 0, assembly; see «СЛУЖ» below |
-| СПИС | 045 | 2 | `с`: zone 045 → page 0, entry 10; `р`: zone 046 → page 1, entry 2010 |
-| АВТПАК | 047 | 1 | |
+| СПИС | 045 | 2 | `с`: zone 045 → page 0, entry 10; `р`: zone 046 → page 1, entry 2010, loads page 0; shared editor/search, see doc/spis.md |
+| АВТПАК | 047 | 1 | retained old АВТ / ПАКЕТ module: driver at 052000, packet reader at 004000; see doc/avtpak.md |
 | ПАСК | 050 | 1 | ПАСКАЛ (Pascal-autocode driver), page 33 (066000) |
 | БАВТ | 051 | 1 | page 33. Runs first for `пас` and for any name ПУЛЬТ itself doesn't know; such names are looked up in the archive catalog (see «Name lookup in the archive catalog») |
 | ОТЛ | 052 | 3 | `о`: zones 052-054 → pages 24-26 (НАБЛ 56342 adds an offset to the zone) |
@@ -118,9 +118,29 @@ with a zero word. `tools/catalog.py` prints it.
 
 Catalog names are not command names: `спис`, `отл`, `джип` etc. fall
 through to БАВТ. The commands that load СЛУЖ, СПИС, ОТЛ, ДЖИП and ЗГЛВК are
-in the next section. The БАВТ section below covers ПУЛЬТ, АЦПУК, РРR and НОВРЕД. Nothing
-found so far loads ПУЛЬТФ or АВТПАК (НАБЛ has descriptors for zones 047-051 into page 25 at
-56362-56364, not reached from the command tables).
+in the next section. The БАВТ section below covers ПУЛЬТ, АЦПУК, РРR and НОВРЕД.
+No invocation of ПУЛЬТФ has been found. АВТПАК is absent from the current
+command tables, but ПУСК 00624-00627 can load it into page 2 for an initial
+packet run. НАБЛ has descriptors for zones 047-051 into page 25 at
+56362-56364, not reached from the command tables. АВТПАК's old АВТ entry
+52010 reads the obsolete four-zone translator from 40:071-074; those zones
+have been reused. The ПАКЕТ entry 52011 still executes a simple command
+chain when explicitly connected in a temporary private-volume probe.
+`make avtpak` and doc/avtpak.md cover both runtime placements and the probes.
+`make launchers` builds static listings of ПУЛЬТ and ПУЛЬТФ. ПУЛЬТ handles
+both named archive passports and the column-based interactive form, through
+Э50 7701. A valid named passport created a private queued task; its loader
+still reads 40:1040. Current-terminal template 00207 instead has 40:040.
+Interactive probes returned «ЕСТЬ» even after dispak rejected the passport:
+the module checks only response 077777, and dispak returns other error codes.
+Do not equate that message with successful task creation. The two ПУЛЬТФ
+trial entries 00007/00010 both failed, and neither generated a task.
+`make acpuk` and doc/acpuk.md cover the АЦПУ output-file viewer. A part is
+128 words, eight parts per stream zone (Э62 041). Э62 040 task lookup is
+unimplemented in the tested dispak. Own-stream probes reach the part header,
+but the restored НАБЛ formatter jumps from 074515 to unloaded 075632 and
+then reaches resident error handling. Do not treat the subsequent «О.К» as
+successful completion of the viewer or the following ВЫХ as its own dialog.
 
 ## Boot (trace of `конец`)
 
@@ -225,6 +245,14 @@ and an unknown name loads БАВТ.
 
 ## БАВТ names (page 33)
 
+Full address-level analysis: doc/bavt.md; symbols: syms/БАВТ.sym.
+`make bavt` builds the static listing at 066000. The module calls the
+resident scanner 76016 and consumes its typed references through 66067.
+Its 34 name/handler pairs, all shared loaders and return paths are mapped.
+`tests/bavt.py` uses isolated volumes and HOME, with explicit expected
+failures for absent u66 and the unmodified BEMSH return path.
+
+
 БАВТ's (name, word) table is at 66074-66177; 66200 ends it. The second
 word is the handler's offset from 066000 (checked for the СТАТИС names:
 0344 → 66344, etc.). A name in neither this table nor the ПУСК/НАБЛ tables
@@ -257,20 +285,21 @@ with no arguments and no `арх`. Every name first reloads ПУСК and loads �
 | `струк` | СТРУК (073-074) → pages 0-1, АДСИС | «-=* СТРУКТУРА ПРОГРАММЫ *=-» |
 | `сер`, `сервис` | СЕРВИС (031-033) → pages 0-2, АДСИС | «ПАСКАЛЬ-СЕРВИС» |
 
-`бавт` (67030 → 67064) sets the Э72 interception address (`Э72 4` with
-KEYE72), then moves a system volume to unit 30 with one of the Э72 words
-at 67277-67302. Which one depends on whether unit 40 is 2068 (`Э50 105`,
-67404) and whether unit 30 is mounted. On 2068 it renames 57 → 30 (67277)
-or exchanges them (67300). Otherwise it renames 40 → 30 (67301) or
-exchanges them (67302). Then it sets unit 30's offset to 0200 (`Э50 112`)
-and reads zone 01747 into page 0 and jumps to 01100. On a 7.25 MB disk the
-zone number is 10 bits, so that is zone (0200 + 01747) & 01777 = 0147 of
-the system volume: БЕМШ (re-aitm's СП 0100 system 1 uses the same zone).
-It reads zones 01750-01752 into pages 34, 36 and 37, reads drum 12
-zone 0 into pages 4 and 5, prints them and asks «ИДТИ?». This needs two
-dispak fixes (TODO.md): masking zone numbers to 01777 under `--725`,
-and Э72 rename/exchange with the scratch unit 30. Until then `бавт` stops
-in `Э72` with АВОСТ 56.
+`бавт` installs the Э74 handler at 66004 using KEYE72. On 2068 it
+renames 57 → 30 or exchanges 57↔30; otherwise it uses 40. It sets offset
+0200 and reads u30 z01747 (physical zone 0147 under --725), then enters
+BEMSH at 01100. The return table has a defect: for 2068 with an occupied
+u30, 67304 exchanges 40↔30 instead of undoing 57↔30. With ПОРЦ 0 this
+causes a later ПУСК reload from the wrong volume and АВОСТ 000030.
+Changing that one word only in a temporary volume copy prevented the
+abort. The return also resets u57's offset to 0 instead of saving 0371.
+Full BEMSH translation and execution remain unverified.
+
+`ПОРЦ` with no argument stores 0; the historical default-016 fragment
+at 66314 is not reached from the current command entry. `ФОРМ` updates
+fields sequentially and saves already accepted fields even if a later
+argument is invalid. `КОНКАТ` matches a whole word and copies the second
+array onto that position; the loop copies its zonal length plus two words.
 
 So `мавт`, `конкат`, `диспак`, `форм`, `пп`, `ппн`, `па`, `зкан`, `сбуф` and
 `порц` are handled inside БАВТ. The others load a catalog entry or an
@@ -714,3 +743,17 @@ The disassembly with comments is `~/git/besm6/pasauto-re/paskal.b6`.
 - `~/git/re-aitm`: the ITM autocode translator.
 - `~/git/leobru/re-dimip`, `re-poplan`: earlier projects with the same
   method (coverage-seeded disbesm6 listings, `.sym` and notes files).
+
+## СПИС (zones 045–046)
+
+`make spis` builds a combined static listing at 00000–03777. `С` enters
+00010, `Р` enters 02010 and loads the first zone; context search through
+`С` loads the second zone and enters 02017. Text starts at 010000
+(010002 for АЛГ); Р assembles changes at 06000, then copies them back.
+Save changes separately with `З`. Line numbers contain decimal digits
+in separate bytes, up to five digits. СИС КОД text needs the end pair
+0172,0175. An inserted literal needs an explicit line end when a separate
+line is wanted, e.g. `Р 0,'НОВАЯ_175'`. Search output uses a window of
+whole words and can include words before 010000. See doc/spis.md.
+`python3 tests/spis.py --dispak=...` runs 18 checks sequentially on private
+volume copies, preserving original disks and using an isolated HOME.
