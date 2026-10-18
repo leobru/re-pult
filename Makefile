@@ -87,6 +87,30 @@ build/СБОЙ.dump: images/$(VOL)/.done
 
 .PHONY: sboy
 
+# ДАЙ has explicit command entries, data and batch-job templates.
+dai: build/ДАЙ.lst build/ДАЙ.dump
+build/ДАЙ.lst: images/$(VOL)/.done syms/ДАЙ.sym
+	mkdir -p build
+	$(DIS) -b -a0 -e7 -n syms/ДАЙ.sym images/$(VOL)/ДАЙ.bin > $@
+
+build/ДАЙ.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01005 --length=1 > $@
+
+.PHONY: dai
+
+# АДСИС is the Pascal runtime page at 074000.
+adsis: build/АДСИС.lst build/АДСИС.dump
+build/АДСИС.lst: images/$(VOL)/.done syms/АДСИС.sym
+	mkdir -p build
+	$(DIS) -b -a74000 -e74003 -n syms/АДСИС.sym images/$(VOL)/АДСИС.bin > $@
+
+build/АДСИС.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01006 --length=1 > $@
+
+.PHONY: adsis
+
 diff: images
 	@for f in images/2248/*.bin; do n=$$(basename $$f); \
 	  cmp -s $$f images/2148/$$n || echo "differs: $$n"; done
@@ -130,6 +154,11 @@ check2068: 2068
 
 checksegments: 2068
 	$(PYTHON) tests/pascal-segments.py --dispak "$(DISPAK)" --volumes $(VOLUME_DIR)
+
+checkadsis: 2068
+	$(PYTHON) tests/adsis.py --dispak "$(DISPAK)" --volumes $(VOLUME_DIR)
+
+.PHONY: checkadsis
 
 build/pult2068/2148 build/pult2068/2248: build/pult2068/%: $(VOLUME_DIR)/%
 	mkdir -p build/pult2068
