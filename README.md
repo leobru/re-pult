@@ -36,6 +36,10 @@ The БАВТ dispatcher, every command handler, Pascal launch frames and
 translator return paths are described in [doc/bavt.md](doc/bavt.md).
 The СПИС text reader/editor, commands С/Р, encodings and context search are
 described in [doc/spis.md](doc/spis.md).
+The ОТЛ debugger, memory commands, symbolic addresses, native execution and
+instruction interpreter are described in [doc/otl.md](doc/otl.md).
+The ДЖИП/ДЖИН ARFA loader and its Pascal reconstruction with an identical
+194-word program image are described in [doc/dzhin.md](doc/dzhin.md).
 The ALGOL `_БИБ` lookup and all 182 standard-library names, addresses and
 dependencies are described in [doc/algol-library.md](doc/algol-library.md).
 The extracted УППBULLM20 card-package converter and its damaged prefix are
@@ -65,6 +69,9 @@ make launchers  # ПУЛЬТ generator and the retained ПУЛЬТФ image
 make acpuk      # АЦПУ output-file viewer at 074000
 make spis       # С/Р text editor, both pages at 00000–03777
 make bavt       # third command dispatcher and launchers at 066000
+make otl        # internal debugger at 050000
+make dzhin      # Pascal ДЖИП/ДЖИН loader at 00000
+make checkservic # recompile СЕРВИС; compare all three zones with the disk image
 make checkadsis # Pascal runtime, file-boundary and error-path checks on private disks
 tools/catalog.py 2248              # print the ПУЛЬТ catalog
 tools/loads.sh < sessions/лес.txt  # exchanges (Э70) of a session
@@ -108,3 +115,7 @@ The original `pult.b6` and 2250 workflow remain available.
 The [Pascal segmentation test](doc/pascal-segments.md) uses a temporary
 compatibility loader, exercises external calls in both directions, unloads
 and reloads at a different address, and restores the original resident.
+
+The [annotated СЕРВИС source](pascal/servic.pas) reproduces all 3072 words
+of the 21.11.88 image on volumes 2148 and 2068. See [the analysis and build
+verification](doc/servic.md).
