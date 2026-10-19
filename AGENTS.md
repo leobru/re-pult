@@ -43,8 +43,10 @@ terminal I/O, and 064 is printing.
 - pult.b6 has a `тел` card, so dispak runs ПУЛЬТ as a terminal task
   (without it, Э71 reports no terminal, and the formatter switches to
   65-column lines and `.`-digraphs).
-- dispak runs share `~/.besm6/input_queue`; remove it before each session
-  and never run two sessions at once.
+- Use `tools/run-dispak.sh` for dispak probes. It sets HOME to
+  `build/dispak-home`, so the input queue stays writable inside the sandbox.
+  Set `DISPAK=/path/to/dispak` to select a binary. Run sessions serially;
+  their queue is `build/dispak-home/.besm6/input_queue`.
 
 ## Build
 
@@ -105,12 +107,12 @@ with a zero word. `tools/catalog.py` prints it.
 | АВТПАК | 047 | 1 | retained old АВТ / ПАКЕТ module: driver at 052000, packet reader at 004000; see doc/avtpak.md |
 | ПАСК | 050 | 1 | ПАСКАЛ (Pascal-autocode driver), page 33 (066000) |
 | БАВТ | 051 | 1 | page 33. Runs first for `пас` and for any name ПУЛЬТ itself doesn't know; such names are looked up in the archive catalog (see «Name lookup in the archive catalog») |
-| ОТЛ | 052 | 3 | `о`: zones 052-054 → pages 24-26 (НАБЛ 56342 adds an offset to the zone) |
+| ОТЛ | 052 | 3 | `о [address]`: internal debugger, default pages 24-26; memory, symbols, Э67 execution, interpreter; `вых`/`кс` returns. See `doc/otl.md`, `make otl`, `tests/otl.py` |
 | ЛЕС | 055 | 3 | `лес`, Pascal program, pages 0-2 |
 | ЧИСТКА | 060 | 3 | `чистка`, Pascal program, pages 0-2 |
 | СТАТИС | 063 | 1 | Pascal program, page 0, +АДСИС; six modes, see «СТАТИС» below. With no argument БАВТ prints «QU» before any СТАТИС or АДСИС code runs |
 | ЭХОЛОТ | 064 | 4 | `эхолот`, Pascal program, pages 0-3 |
-| ДЖИП | 070 | 1 | `джин` (with АДСИС in page 36) → page 0; `диалог` → page 12 (after ЭХОЛОТ's zones 064-067 → pages 0-3) |
+| ДЖИП | 070 | 1 | `джин` (АДСИС in page 36) → page 0; ARFA ДЖИН.РАБОЧ/ДЖИН.ПРОГР loader. `pascal/dzhin.pas` reproduces all 194 program words with date 07.12.87; see doc/dzhin.md and tests/dzhin.py. `диалог` also loads the image into page 12 |
 | РЕЗРВ2 | 071 | 2 | |
 | СТРУК | 073 | 1 | `струк`, Pascal program, pages 0-1 |
 | РЕЗРВ3 | 074 | 1 | |
@@ -757,3 +759,12 @@ line is wanted, e.g. `Р 0,'НОВАЯ_175'`. Search output uses a window of
 whole words and can include words before 010000. See doc/spis.md.
 `python3 tests/spis.py --dispak=...` runs 18 checks sequentially on private
 volume copies, preserving original disks and using an isolated HOME.
+
+## СЕРВИС source reconstruction
+
+`pascal/servic.pas` annotates the decompilation from `~/src/bega-re/servic.pas`.
+It reproduces all 3072 words of 2148 zones 01031-01033 (2068 zones 031-033),
+including date and residual zone contents. Use `make checkservic`: it compiles
+with May Pascal 9 (17.05.88) on disposable disks and sets date 21.11.88 via
+`localtime()`. The source explicitly calls ADSIS 74066 at 01214. December
+Pascal produces different CASE tables and one set operation. See doc/servic.md.

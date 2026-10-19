@@ -183,6 +183,29 @@ build/БАВТ.dump: images/$(VOL)/.done
 
 .PHONY: bavt
 
+# ОТЛ is position independent; the default base is 050000 (page 024).
+otl: build/ОТЛ.lst build/ОТЛ.dump
+build/ОТЛ.lst: images/$(VOL)/.done syms/ОТЛ.sym
+	mkdir -p build
+	$(DIS) -b -a50000 -e50010 -n syms/ОТЛ.sym images/$(VOL)/ОТЛ.bin > $@
+
+build/ОТЛ.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01052 --length=3 > $@
+
+.PHONY: otl
+
+dzhin: build/ДЖИП.lst build/ДЖИП.dump
+build/ДЖИП.lst: images/$(VOL)/.done syms/ДЖИП.sym
+	mkdir -p build
+	$(DIS) -b -a0 -e7 -n syms/ДЖИП.sym images/$(VOL)/ДЖИП.bin > $@
+
+build/ДЖИП.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01070 --length=1 > $@
+
+.PHONY: dzhin
+
 diff: images
 	@for f in images/2248/*.bin; do n=$$(basename $$f); \
 	  cmp -s $$f images/2148/$$n || echo "differs: $$n"; done
@@ -258,3 +281,9 @@ install2068: 2068
 	fi
 
 .PHONY: install2068
+
+# Exact reconstruction of the November 1988 СЕРВИС with the May compiler.
+checkservic: 2068
+	$(PYTHON) tests/servic.py --dispak "$(DISPAK)" --volumes $(VOLUME_DIR)
+
+.PHONY: checkservic
