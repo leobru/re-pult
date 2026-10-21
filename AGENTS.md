@@ -109,9 +109,9 @@ with a zero word. `tools/catalog.py` prints it.
 | БАВТ | 051 | 1 | page 33. Runs first for `пас` and for any name ПУЛЬТ itself doesn't know; such names are looked up in the archive catalog (see «Name lookup in the archive catalog») |
 | ОТЛ | 052 | 3 | `о [address]`: internal debugger, default pages 24-26; memory, symbols, Э67 execution, interpreter; `вых`/`кс` returns. See `doc/otl.md`, `make otl`, `tests/otl.py` |
 | ЛЕС | 055 | 3 | `лес`, Pascal program, pages 0-2 |
-| ЧИСТКА | 060 | 3 | `чистка`, Pascal program, pages 0-2 |
+| ЧИСТКА | 060 | 3 | Pascal declaration/reference analyzer (10.12.82), pages 0-2; `чистка`, then e.g. `500101 1 [Х]`. Reports unused declarations/routines and single-reference variables. See doc/chistka.md, syms/ЧИСТКА.sym, make chistka/checkchistka |
 | СТАТИС | 063 | 1 | Pascal program, page 0, +АДСИС; six modes, see «СТАТИС» below. With no argument БАВТ prints «QU» before any СТАТИС or АДСИС code runs |
-| ЭХОЛОТ | 064 | 4 | `эхолот`, Pascal program, pages 0-3 |
+| ЭХОЛОТ | 064 | 4 | Pascal storage-depth analyzer (24.10.86), pages 0-3; `эхолот`, then `500101 1 [/500300 1] [И] [Т] [С]`. Octal frame/call-chain sizes, optional code addresses; recursion and root-only NEW require caution. See doc/echolot.md, syms/ЭХОЛОТ.sym, make echolot/checkecholot |
 | ДЖИП | 070 | 1 | `джин` (АДСИС in page 36) → page 0; ARFA ДЖИН.РАБОЧ/ДЖИН.ПРОГР loader. `pascal/dzhin.pas` reproduces all 194 program words with date 07.12.87; see doc/dzhin.md and tests/dzhin.py. `диалог` also loads the image into page 12 |
 | РЕЗРВ2 | 071 | 2 | |
 | СТРУК | 073 | 1 | `струк`, Pascal program, pages 0-1 |
@@ -768,3 +768,34 @@ including date and residual zone contents. Use `make checkservic`: it compiles
 with May Pascal 9 (17.05.88) on disposable disks and sets date 21.11.88 via
 `localtime()`. The source explicitly calls ADSIS 74066 at 01214. December
 Pascal produces different CASE tables and one set operation. See doc/servic.md.
+
+## ЧИСТКА / ЭХОЛОТ Pascal sources
+
+`pascal/chistka.pas` retains the address-based decompilation's routine and
+control-flow structure; `pascal/echolot.pas` is a structured reconstruction
+of the storage-analysis core, with the full historical lexer/type checker
+still outstanding. Neither source recompiles bit-exactly. See
+doc/analyzers-source.md. `make checkanalyzers` compiles both with May Pascal 9
+on private disks and runs all 20 + 17 behavior probes on the rebuilt images.
+`tests/rebuild-analyzers.py --exact` additionally requires binary identity
+and currently fails. Do not describe behavior-probe success as exact recovery.
+
+When recovering Pascal control flow, recognize THEN/ELSE alternatives when
+THEN ends in a forward GOTO over the alternative, or in EXIT. Remove the
+GOTO when the branches rejoin, and remove EXIT when the conditional ends
+the routine. Preserve other incoming label references. Format alternative
+condition chains as ELSE IF to avoid unnecessary nesting.
+Omit explicit `:10` integer output widths: use the default width.
+Use `var := ;` to store the current accumulator without reloading it,
+including repeated NIL or zero assignments when the original code reuses A.
+
+For ЧИСТКА, preserve the original sizes and entry addresses of all 43
+procedures and main (05122, 0121 words), and the end 05262. The rebuild
+checks these with tests/chistka-layout.py and records routine_layout in
+comparison.json. Full binary identity remains a separate check. The CODE
+loop branches in L2733/L3644 preserve original machine-word boundaries.
+
+Keep recovered Pascal concise: combine adjacent `write(x); writeln;`
+statements as `writeln(x);`, omit redundant expression parentheses while
+respecting Pascal precedence, and write small octal C-suffixed numbers as
+decimal integers. Verify that such source cleanup preserves machine words.
