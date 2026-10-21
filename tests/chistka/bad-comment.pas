@@ -1,0 +1,2 @@
+_program CHECK;
+(* COMMENT

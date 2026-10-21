@@ -287,3 +287,40 @@ checkservic: 2068
 	$(PYTHON) tests/servic.py --dispak "$(DISPAK)" --volumes $(VOLUME_DIR)
 
 .PHONY: checkservic
+
+# ЧИСТКА: Pascal declaration/reference analysis, image 10.12.82.
+chistka: build/ЧИСТКА-static.lst build/ЧИСТКА.dump
+build/ЧИСТКА-static.lst: images/$(VOL)/.done syms/ЧИСТКА.sym
+	mkdir -p build
+	$(DIS) -b -a0 -e7 -n syms/ЧИСТКА.sym images/$(VOL)/ЧИСТКА.bin > $@
+
+build/ЧИСТКА.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01060 --length=3 > $@
+
+checkchistka: 2068
+	$(PYTHON) tests/chistka.py --dispak "$(DISPAK)"
+
+.PHONY: chistka checkchistka
+
+# ЭХОЛОТ: Pascal storage-depth and compiled-code analysis, image 24.10.86.
+echolot: build/ЭХОЛОТ-static.lst build/ЭХОЛОТ.dump
+build/ЭХОЛОТ-static.lst: images/$(VOL)/.done syms/ЭХОЛОТ.sym
+	mkdir -p build
+	$(DIS) -b -a0 -e7 -n syms/ЭХОЛОТ.sym images/$(VOL)/ЭХОЛОТ.bin > $@
+
+build/ЭХОЛОТ.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01064 --length=4 > $@
+
+checkecholot: 2068
+	$(PYTHON) tests/echolot.py --dispak "$(DISPAK)"
+
+.PHONY: echolot checkecholot
+
+# Readable Pascal reconstructions: compilation and historical behavior probes.
+# A separate --exact option rejects all binary differences (currently expected).
+checkanalyzers: 2068
+	$(PYTHON) tests/rebuild-analyzers.py --dispak "$(DISPAK)" --disassembler "$(DIS)"
+
+.PHONY: checkanalyzers

@@ -1,0 +1,11 @@
+_array[1..3] _of integer;
+_record X:integer; Y:_array[1..2] _of char _end;
+_record _case K:boolean _of false:(A:integer);true:(B:_array[1..2] _of integer) _end;
+_packed _file _of char;
+_packed _file _of 0..7;
+_packed _file _of 0..48;
+_packed _file _of ↑integer;
+_set _of 0..47;
+↑ MISSING;
+-17; 'X'; _nil; TRUE; 1.5;
+(A,B:integer;_var C:_array[1..2] _of integer;_function FN:real;_proced PR);

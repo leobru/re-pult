@@ -71,6 +71,11 @@ make spis       # С/Р text editor, both pages at 00000–03777
 make bavt       # third command dispatcher and launchers at 066000
 make otl        # internal debugger at 050000
 make dzhin      # Pascal ДЖИП/ДЖИН loader at 00000
+make chistka    # Pascal declaration/reference analyzer at 00000
+make checkchistka # isolated analysis probes with Pascal source fixtures
+make echolot    # Pascal storage-depth analyzer at 00000
+make checkecholot # source analysis and matching against freshly compiled code
+make checkanalyzers # compile the recovered Pascal sources and run both probe suites
 make checkservic # recompile СЕРВИС; compare all three zones with the disk image
 make checkadsis # Pascal runtime, file-boundary and error-path checks on private disks
 tools/catalog.py 2248              # print the ПУЛЬТ catalog
@@ -119,3 +124,14 @@ and reloads at a different address, and restores the original resident.
 The [annotated СЕРВИС source](pascal/servic.pas) reproduces all 3072 words
 of the 21.11.88 image on volumes 2148 and 2068. See [the analysis and build
 verification](doc/servic.md).
+
+The [ЧИСТКА analysis](doc/chistka.md) describes its Pascal parser, symbol
+records, use of routine references and diagnostics, with reproducible probes.
+
+The [ЭХОЛОТ analysis](doc/echolot.md) explains storage estimates for Pascal
+call chains, recursion and NEW, plus matching source routines to compiled code.
+
+Readable Pascal sources are in [pascal/chistka.pas](pascal/chistka.pas) and
+[pascal/echolot.pas](pascal/echolot.pas). They use the dialect of
+`pasauto-re/pretty.pas`. See [the reconstruction status](doc/analyzers-source.md)
+for binary differences and the scope of behavioral verification.

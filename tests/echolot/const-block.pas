@@ -1,0 +1,21 @@
+_program CONSTS;
+_const A=17;
+ B=A+3;
+ C=B-5;
+ D=C*2;
+ E=D/4;
+ NEG=-19;
+ SUB=NEG-4;
+ PROD=NEG*3;
+ QUOT=NEG/4;
+ PLUS=+8;
+ ZERO=0;
+ BASED=77C;
+ REF=A;
+ BOOL=true;
+ CHR='Z';
+ TXT='AB';
+ RVAL=1.5;
+ NILVAL=_nil;
+_var BUFFER:_array[1..B] _of integer;
+_( _) .
