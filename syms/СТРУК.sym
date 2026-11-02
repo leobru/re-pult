@@ -1,0 +1,28 @@
+0-165 D -
+7-10 C - 7
+166 B Fail
+204 B BindInput
+216 B BindOutput
+231 B FlushReport
+250 B Allocate
+267 B SkipComment
+322 B SkipSpaces
+346 B ReadWord
+375 C LetterPredicate 375
+402 C DigitPredicate 402
+434 B Greater
+466 B SortRows
+537 B NextWord
+604 B NewLine
+613 B PrintLine
+635 B PrintTable
+1005 B SkipBody
+1025 B ParseBlock
+1222 B ReadAddress
+1302 B ReadRequest
+1335 B Main
+1446 C RestoreLevel3 1446
+1450 C EnterLevel2 1450
+1454 C EnterLevel3 1454
+1460 C Initialize 1460
+1465-1777 D ZoneTail

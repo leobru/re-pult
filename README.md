@@ -75,6 +75,8 @@ make chistka    # Pascal declaration/reference analyzer at 00000
 make checkchistka # isolated analysis probes with Pascal source fixtures
 make echolot    # Pascal storage-depth analyzer at 00000
 make checkecholot # source analysis and matching against freshly compiled code
+make struk       # Pascal structure scanner, static listing
+make checkstruk  # exact rebuild with both compilers and isolated behavior probes
 make checkanalyzers # compile the recovered Pascal sources and run both probe suites
 make checkservic # recompile СЕРВИС; compare all three zones with the disk image
 make checkadsis # Pascal runtime, file-boundary and error-path checks on private disks
@@ -135,3 +137,8 @@ Readable Pascal sources are in [pascal/chistka.pas](pascal/chistka.pas) and
 [pascal/echolot.pas](pascal/echolot.pas). They use the dialect of
 `pasauto-re/pretty.pas`. See [the reconstruction status](doc/analyzers-source.md)
 for binary differences and the scope of behavioral verification.
+
+The [СТРУК analysis](doc/struk.md) describes the Pascal procedure tree,
+source-line ranges, alphabetical listing and disk reports. Its
+[restored source](pascal/struk.pas) rebuilds to all 1024 original words
+with both historical Pascal compilers.

@@ -114,7 +114,7 @@ with a zero word. `tools/catalog.py` prints it.
 | ЭХОЛОТ | 064 | 4 | Pascal storage-depth analyzer (24.10.86), pages 0-3; `эхолот`, then `500101 1 [/500300 1] [И] [Т] [С]`. Octal frame/call-chain sizes, optional code addresses; recursion and root-only NEW require caution. See doc/echolot.md, syms/ЭХОЛОТ.sym, make echolot/checkecholot |
 | ДЖИП | 070 | 1 | `джин` (АДСИС in page 36) → page 0; ARFA ДЖИН.РАБОЧ/ДЖИН.ПРОГР loader. `pascal/dzhin.pas` reproduces all 194 program words with date 07.12.87; see doc/dzhin.md and tests/dzhin.py. `диалог` also loads the image into page 12 |
 | РЕЗРВ2 | 071 | 2 | |
-| СТРУК | 073 | 1 | `струк`, Pascal program, pages 0-1 |
+| СТРУК | 073 | 1 | `струк`, Pascal source structure and alphabetical procedure lists, image 11.11.86; `pascal/struk.pas` reproduces all 1024 words with both compilers. See doc/struk.md, make struk/checkstruk |
 | РЕЗРВ3 | 074 | 1 | |
 | НОВРЕД | 075 | 3 | `ред NAME` (or `м NAME`) via БАВТ: zones 075-077 → pages 0-2, plus АДСИС → page 36 (Pascal program). `ред пам` gives a `+` prompt; `ред буф` needs `арх` first («НЕТ НАСТРОЙКИ НА АРХИВ»), then looks the name up in the archive («В АРХИВЕ ВАСЯ НЕТ ИМЕНИ БУФ») |
 

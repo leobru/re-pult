@@ -324,3 +324,19 @@ checkanalyzers: 2068
 	$(PYTHON) tests/rebuild-analyzers.py --dispak "$(DISPAK)" --disassembler "$(DIS)"
 
 .PHONY: checkanalyzers
+
+# СТРУК: exact reconstruction of the 11.11.86 Pascal structure scanner.
+struk: build/СТРУК-static.lst build/СТРУК.dump
+build/СТРУК-static.lst: images/$(VOL)/.done syms/СТРУК.sym
+	mkdir -p build
+	$(DIS) -b -a0 -e7 -n syms/СТРУК.sym images/$(VOL)/СТРУК.bin > $@
+
+build/СТРУК.dump: images/$(VOL)/.done
+	mkdir -p build
+	besmtool dump $(VOL) --start=01073 --length=1 > $@
+
+checkstruk: 2068
+	$(PYTHON) tests/struk.py --dispak "$(DISPAK)"
+	$(PYTHON) tests/struk.py --dispak "$(DISPAK)" --compiler december
+
+.PHONY: struk checkstruk
