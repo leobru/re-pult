@@ -100,16 +100,30 @@ build/ДАЙ.dump: images/$(VOL)/.done
 .PHONY: dai
 
 # АДСИС is the Pascal runtime page at 074000.
-adsis: build/АДСИС.lst build/АДСИС.dump
+adsis: build/АДСИС.lst build/АДСИС.dump build/АДСИС-map.json
 build/АДСИС.lst: images/$(VOL)/.done syms/АДСИС.sym
 	mkdir -p build
 	$(DIS) -b -a74000 -e74003 -n syms/АДСИС.sym images/$(VOL)/АДСИС.bin > $@
+
+build/АДСИС-map.json: images/2248/.done images/2148/.done syms/АДСИС.sym tests/adsis-layout.py tests/echolot-layout.py
+	$(PYTHON) tests/adsis-layout.py --output $@
 
 build/АДСИС.dump: images/$(VOL)/.done
 	mkdir -p build
 	besmtool dump $(VOL) --start=01006 --length=1 > $@
 
 .PHONY: adsis
+
+# Rebuild the original runtime page with BEMSH and compare actual ЗОНГП output.
+checkadsisasm: images/2248/.done images/2148/.done adsis.be tools/build-adsis.py
+	$(PYTHON) tools/build-adsis.py --dispak "$(DISPAK)"
+
+.PHONY: checkadsisasm
+
+pultresidents: tools/pult-residents.py tests/echolot-layout.py $(wildcard syms/*.sym)
+	$(PYTHON) tools/pult-residents.py --disassembler "$(DIS)"
+
+.PHONY: pultresidents
 
 # АВТПАК has a relative driver at 052000 and a packet reader at 004000.
 avtpak: build/АВТПАК.lst build/АВТПАК-пакет.lst build/АВТПАК.dump
@@ -254,6 +268,16 @@ checkadsis: 2068
 	$(PYTHON) tests/adsis.py --dispak "$(DISPAK)" --volumes $(VOLUME_DIR)
 
 .PHONY: checkadsis
+
+checkadsislimits: 2068
+	$(PYTHON) tests/adsis-real-limits.py --dispak "$(DISPAK)"
+
+.PHONY: checkadsislimits
+
+checkadsisboundaries: 2068
+	$(PYTHON) tests/adsis-real-boundaries.py --dispak "$(DISPAK)"
+
+.PHONY: checkadsisboundaries
 
 build/pult2068/2148 build/pult2068/2248: build/pult2068/%: $(VOLUME_DIR)/%
 	mkdir -p build/pult2068

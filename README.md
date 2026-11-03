@@ -25,6 +25,8 @@ The ДАЙ service monitor, its 15 subcommands and ФОРТ extracode handler ar
 described in [doc/dai.md](doc/dai.md).
 The Pascal runtime АДСИС, its entry vector, files and memory are described in
 [doc/adsis.md](doc/adsis.md).
+The resident-page variants on 2148/2248 and their listings are indexed in
+[doc/pult-residents.md](doc/pult-residents.md).
 The retained АВТПАК module, its four-zone ITM assembler driver and ПАКЕТ
 command-chain interpreter are described in [doc/avtpak.md](doc/avtpak.md).
 The ПУЛЬТ launcher generator, its passport templates and generated loader
@@ -63,7 +65,9 @@ make pusk       # static ПУСК listing and full zone dump, without dispak
 make nabl       # static НАБЛ listing at 056000 and full source zone dump
 make sboy       # static СБОЙ listing at 076000 and full source zone dump
 make dai        # static ДАЙ listing, including batch-job and ФОРТ code
-make adsis      # static АДСИС listing at 074000 and full source zone dump
+make adsis      # АДСИС listing at 074000, source-zone dump and code/data map
+make checkadsisasm # assemble adsis.be; compare the complete ЗОНГП zone with disk
+make pultresidents # find resident variants on 2148/2248 and disassemble distinct images
 make avtpak     # old АВТ driver at 052000 and ПАКЕТ reader at 004000
 make launchers  # ПУЛЬТ generator and the retained ПУЛЬТФ image
 make acpuk      # АЦПУ output-file viewer at 074000
@@ -79,7 +83,7 @@ make struk       # Pascal structure scanner, static listing
 make checkstruk  # exact rebuild with both compilers and isolated behavior probes
 make checkanalyzers # compile the recovered Pascal sources and run both probe suites
 make checkservic # recompile СЕРВИС; compare all three zones with the disk image
-make checkadsis # Pascal runtime, file-boundary and error-path checks on private disks
+make checkadsis # runtime, packed/multiword files, heap, terminal and REAL comparisons
 tools/catalog.py 2248              # print the ПУЛЬТ catalog
 tools/loads.sh < sessions/лес.txt  # exchanges (Э70) of a session
 tools/findpage.py 2148 2248        # zones resembling page 37

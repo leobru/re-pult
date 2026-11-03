@@ -4,6 +4,18 @@ This project disassembles and documents ПУЛЬТ, the interactive (terminal)
 programming system of the BESM-6. The source material is the ПУЛЬТ catalog
 at zone 01000 of the system volumes 2248 and 2148.
 
+`make pultresidents` searches every source zone and disassembles 10 distinct
+resident-page images at 17 locations. Index: doc/pult-residents.md and
+build/pult-residents/README.md; complete search/differences: report.json there.
+Additional pages: 2148:00064 (different СБОЙ), 2148:01145–01150 (four identical
+НАБЛ copies), 2248:01167 (НАБЛ), 2248:01176 (АДСИС). 01117 on both volumes
+contains the identical КСБRUN resident. АДСИС:01176 differs only in 16 data
+words; НАБЛ:01167 only in 61 data words; НАБЛ:01145 has 57 data changes and
+zeroed code at 56446–56447. Search scores exclude zero-word coincidences.
+Use separate syms/СБОЙ-0064.sym and syms/КСБRUN.sym for the different layouts;
+disbesm6 symbol files do not accept # comments (it returns zero despite the
+read error, so the script also requires empty stderr).
+
 The BESM-6 instruction set and the opcode notation are described in
 <https://raw.githubusercontent.com/besm6/c-compiler/refs/heads/main/docs/Besm6_Instruction_Set.md>.
 Extracode 070 (`*70`, Э70) is disk/drum exchange, 071 (`*71`, Э71) is
@@ -92,7 +104,7 @@ with a zero word. `tools/catalog.py` prints it.
 | АЦПУК | 003 | 1 | `ацпу` via БАВТ: page 36; restores formatter quarter 074400–074777 from drum 27 track 037 sector 1; see doc/acpuk.md |
 | ПУЛЬТФ | 004 | 1 | historical launcher name; current image contains mixed parser/interpreter fragments, no working generator established; see doc/pultf.md |
 | ДАЙ | 005 | 1 | `дай SUB args`, page 0; assembly, no АДСИС; see «ДАЙ» below |
-| АДСИС | 006 | 1 | Pascal runtime library, page 36 (074000); the compiler's ИА=74000 table |
+| АДСИС | 006 | 1 | Pascal runtime, page 36 (074000), ИА=74000 vector; stack/heap, streams, typed files and formatting. See doc/adsis.md, syms/АДСИС.sym, make adsis/checkadsis; page map and execution coverage in build/adsis-probes/coverage.json |
 | РЕЗРВ1 | 007 | 22 | pool of overlays; `алг` reads zone 015 into page 0, but no code of it runs before the session stops (ПЛОХО С Э60); per-zone pieces `РЕЗРВ1+k` |
 | СЕРВИС | 031 | 3 | `сервис`, `сер`, Pascal program, pages 0-2 (+АДСИС) |
 | ПАСЛ | 034 | 1 | saved state ("ЛЕНТЯЙ…РАSСАL…" text) |
@@ -579,12 +591,80 @@ streams, files, heap, formatting and errors are documented in
 [doc/adsis.md](doc/adsis.md). `syms/АДСИС.sym` provides the full static
 partition and compiler aliases; `make adsis` builds the listing and dump.
 
+`adsis.be` is the authoritative BEMSH source for the complete original page.
+`make checkadsisasm DISPAK=dispak` assembles
+it and compares the actual ЗОНГП output with both 2148:01006 and 2248:01006:
+1024/1024 words, 6144/6144 bytes, zero BEMSH errors. `tools/build-adsis.py`
+uses a private HOME and output volume 1234, with installed 2048/2099 as the
+read-only BEMSH toolchain. Source disks are hashed before/after. The RVS
+directive must be `НАЗ 074000` before `ЗОНГП 430001 000001`; `НАЗ 000001`
+would relocate the page to 1 and insert a leading zero in the dump. The final
+zero at 75777 is explicit КОНД so АМАКС includes the entire page. Code retains
+ПВЛ and explicit right halves; REAL constants retain exact hex words.
+Artifacts: build/adsis-asm/adsis.b6, adsis.lst, adsis.img, comparison.json.
+
 `make checkadsis DISPAK=dispak` runs
 `tests/adsis.py` serially with private volumes and HOME. It checks nested
 procedures, NEW/DISPOSE, PCK/UNPCK, MAPIA/MAPAI, GOST-to-ITM conversion,
 sets, formatting, 1030 INTEGER file records (two zones, sum 530965),
 TEXT I/O, the bounds error and GET after EOF. It does not replace the
 resident or use the temporary segmentation loader.
+
+`--case integer-print` checks 277 values at widths 0, 5, 16 and default 10,
+through both OUTPUT and TEXT, against Python decimal strings (2216 conversions).
+Use `TMPDIR="$PWD/build/tmp" python3 tests/adsis.py --dispak
+dispak --case integer-print`.
+The original АДСИС prints -2^40 as -1099511627773 instead of -1099511627776;
+the test explicitly records this known defect and rejects any other mismatch.
+See doc/adsis.md and build/adsis-probes/integer-print.json. Runs use ПА and
+`-p` to capture the long output without terminal pagination. Generate boundary
+values without intermediate positive overflow: P=2^39, then P-1+P and -P-P.
+
+`--case real-print` checks 38 REAL inputs in 760 conversions through OUTPUT
+and TEXT. `tests/adsis-real-output.py` decodes the input A captured at 75474
+and compares decimal rounding with a 100-digit Decimal oracle. Both channels
+match. Known defects: 75616–75620 replaces a negative decimal exponent with
++18, so small nonzero numbers (including ±2^-61) print as zero with E+17;
+zero itself also prints with E+17. The 75510–75514 padding loop emits an extra
+space when the requested width suffices. Precision is clamped to 1..10,
+default W=14/D=4; all tested formats are exponential. See doc/adsis.md and
+build/adsis-probes/real-print.json. Do not judge a rounding tie from the source
+literal: 9.9995 is actually 9.999499999990803... in the compiled image.
+The address-by-address REAL algorithm is in doc/adsis.md: exponent estimate,
+binary decomposition for powers of ten, rounding table 75630–75641, first
+digit and whole fractional INTEGER field. Cell 75202 is temporarily GOST zero
+for zero padding of the fraction and exponent, then restored to space (0x0F).
+`writeln(1/3:50:D)` for D=10..25 produced identical 51-character fields.
+
+`make checkadsislimits DISPAK=dispak`
+checks exact raw REAL words near the largest magnitudes. The source template
+tests/adsis/real-limit.pas loads a checked word with CODE and `X := ;`, avoiding
+overflow while constructing the value. All 160 conversions of eight nearby
+values matched Decimal through OUTPUT/TEXT (precision 1..10, known padding).
+The representable negative endpoint -2^63, word 7760000000000000, causes
+АВОСТ 000017 at 75521 AVX in either channel: its positive modulus is outside
+the REAL range. Source images remain unchanged. Logs and report:
+build/adsis-real-limits/. See doc/adsis.md for bounds and exact values.
+
+`make checkadsisboundaries DISPAK=dispak`
+tests the closest REAL to each 10^k (k=-19..18), each 2^k (k=-65..62),
+and adjacent positive words, mirrored to both signs. 988 distinct words,
+precisions 1..10, OUTPUT/TEXT: 19760 conversions. Besides 720 conversions
+that lost small values, 56 had a wrong final digit (14 positive word/precision
+pairs and their negatives, in both channels). 2^-4 at D=1 prints 6.2E-02;
+2^53 at D=10 prints 9.0071992548E+15. Finite precision in scaling, addition
+of the rounding correction and fractional extraction explains the deviations;
+the positive bias of the rounding table does not ensure decimal half-up.
+Full report: build/adsis-real-boundaries/report.json. `--case-id 595 --case-id
+307 --case-id 931` reproduces three examples with full instruction tracing.
+
+`--log10-constant 0.301029995664` patches only word 75627 in a private 2068
+copy (3751504046525073 -> 3751504046502374) and compares against the full
+boundary report. All 19760 fields stayed identical: the exponent estimates
+floor(e*C) coincide for every e=-64..63. Results and patch metadata live in
+build/adsis-real-boundaries/log10-0.301029995664/report.json. The source disks
+and runtime image remain unchanged; the more accurate constant alone does
+not repair scaling or fractional-digit rounding.
 
 Some runtime code is generated by the compiler: DISPOSE/DS and ROUND/АС
 are examples. READ/READLN are rejected by this compiler; GET and F@ work.
