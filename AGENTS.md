@@ -1,8 +1,54 @@
 # re-pult working notes
 
+BD/BANDIT sources imported from `besm6.github.io/sources/mars/`:
+`re-bd.asm`, `re-bandit.asm`. `make checkbanditasm` verifies all 1024 words
+of each against both 2148/2248:01026–01027. Feed BEMSH nonempty cards and
+use `НАЗ 000001` to retain relative addressing. See doc/bandit.md.
+`make checkbandit` uses disposable volumes and HOME for NEW/OPEN/PUT/GET,
+duplicate rollback, DELETE and metadata; original MOD reproducibly clobbers
+M4 at 66470 and aborts. Multiblock probes explicitly patch only their private
+BD buffer default 2068:026:0546 from 033 to 032: page 33 otherwise overlaps
+the dispatcher. The safe-buffer case verifies all 1088 words of a linked
+record and its deletion. Source disks and reference 2068 remain unchanged.
+
+March 5, 2025 Pascal reconstructions from `pasauto-re/` are
+imported into `pascal/pasauto-2025/` (excluding pasauto.pas).
+See doc/pasauto-imports.md: ppr=РРR (Lisp formatter), lazy=ПАСЛ/ЛЕНТЯЙ,
+pretty=ЛЕС/PRETTY (Pascal formatter), newedt=НОВРЕД, print=КПЕЧ,
+bilist=КБИЛИС. Working pascal/bilist.pas adds a missing semicolon;
+pascal/newedt.pas changes three direct PUT jumps 74030 -> 74257.
+`make checkpasautoimports` compiles all seven files (bilist via its working
+edition); `make checknewedt` also compares a private archive editing session.
+НОВРЕД differs from all 3072 original words only at its date and four
+padding half-instructions; output and the saved edited zone match.
+Imported numeric escape aliases and comments are handled only while preparing
+compiler INPUT. Trailing whitespace in the imported sources was removed.
+
 This project disassembles and documents ПУЛЬТ, the interactive (terminal)
 programming system of the BESM-6. The source material is the ПУЛЬТ catalog
 at zone 01000 of the system volumes 2248 and 2148.
+
+Reserve inventory: doc/pult-reserves.md, reproduced with `make pultreserves`.
+2148:01010–01011 is the original JINN МОСТ dispatcher identified in
+bega-re/JINN.md and switch.pas; its complete raw SHA matches
+the independent inventory. 01074 on both disks is the identical Pascal
+ВЫЗОВЛ (03.07.86), a LISP launcher reading 66:1651–1655, with main at 00237
+and end 00446. Its static listing is build/pult-reserves/ВЫЗОВЛ.lst, using
+syms/ВЫЗОВЛ.sym. `make upd` extracts eight complete UPD BEMSH objects from
+2148:01013–01024: ФУНТМ2, two СЛЕД, two ФУНДОС, КЛЮЧ, МЕТК and КП.
+01017/01021 continue ФУНДОС; КП ends at 01024:1757. 01025 has an older
+КП entry table. 803 source/macro-expansion records survive in object tails.
+See doc/upd.md and build/upd/report.json, *.lst and tail-source.txt.
+Use disbesm6 -r for these containers; 010000 is their pre-link origin,
+and exported СЛЕ006 is data. Some modules also occur in re-bemsh/mred24.
+
+ВЫЗОВЛ source: pascal/vyzovl.pas, doc/vyzovl.md; `make checkvyzovl` checks
+May and December compilers. All 294 program words are compared: 292 match;
+only compiler initializer words 00443/00445 use direct 74251/74313 rather
+than vector entries 74027/74032. Pool 00011–00101 and all procedure/main
+regions match exactly. Four original/rebuilt behavior cases use the ordinary
+Pascal loader via a private ЛЕС slot; direct ДЖИН loading lacks its outer
+return frame. Unit 66 is synthetic for the signature rejection probe.
 
 `make pultresidents` searches every source zone and disassembles 10 distinct
 resident-page images at 17 locations. Index: doc/pult-residents.md and
@@ -62,6 +108,16 @@ terminal I/O, and 064 is printing.
 
 ## Build
 
+Coverage runs use tools/trace-session.py, with patched volume
+build/volumes/2250, a per-run HOME (DISPAK_HOME) and writable private copy
+of archive 2345. The runner preserves terminal.txt and session.log, splits
+coverage, and propagates emulator/splitter failures and TRACE_TIMEOUT
+(default 30 seconds); failed reruns remove stale .done markers.
+sessions/алг.txt creates an ALGOL source through СИС АЛГ and З …=ТТ,
+then compiles it and prints 123. Bare АЛГ loops while reading an empty
+buffer. `make checktraces` checks the successful session, timeout and
+nonzero emulator exits, and preservation of reference volumes.
+
 `make` extracts the images, runs every `sessions/*.txt` under `dispak -t -t`,
 splits the trace per catalog image and disassembles each image that
 executed, at the address it runs at, into `build/<NAME>.lst`. `syms/<NAME>.sym`
@@ -81,7 +137,7 @@ notes as routines are understood. `build/` is reproducible, so don't edit it.
   so offsets set by `Э50 0112` are used as given. Without `спец`, code that
   the Dubna monitor copies with ordinary stores is tagged as data
   (КОНТРОЛЬ КОМАНДЫ). 2250 is
-  `~/.besm6/2250`: 2248 with the patches in `patches-2248.txt`, built by
+  `build/volumes/2250`: 2248 with the patches in `patches-2248.txt`, built by
   `make vol` (`tools/patchvol.py`, which checks each old word). `make
   images` and the listings still use the original 2248. It reads unit
   40 zone 040 into page 0 and jumps to 040. Sessions are fed on stdin, e.g.
@@ -127,7 +183,7 @@ with a zero word. `tools/catalog.py` prints it.
 | ДЖИП | 070 | 1 | `джин` (АДСИС in page 36) → page 0; ARFA ДЖИН.РАБОЧ/ДЖИН.ПРОГР loader. `pascal/dzhin.pas` reproduces all 194 program words with date 07.12.87; see doc/dzhin.md and tests/dzhin.py. `диалог` also loads the image into page 12 |
 | РЕЗРВ2 | 071 | 2 | |
 | СТРУК | 073 | 1 | `струк`, Pascal source structure and alphabetical procedure lists, image 11.11.86; `pascal/struk.pas` reproduces all 1024 words with both compilers. See doc/struk.md, make struk/checkstruk |
-| РЕЗРВ3 | 074 | 1 | |
+| РЕЗРВ3 | 074 | 1 | ВЫЗОВЛ (03.07.86), Pascal LISP launcher; main 00237, end 00446; reads u66 z1651–1655. See doc/pult-reserves.md, make pultreserves |
 | НОВРЕД | 075 | 3 | `ред NAME` (or `м NAME`) via БАВТ: zones 075-077 → pages 0-2, plus АДСИС → page 36 (Pascal program). `ред пам` gives a `+` prompt; `ред буф` needs `арх` first («НЕТ НАСТРОЙКИ НА АРХИВ»), then looks the name up in the archive («В АРХИВЕ ВАСЯ НЕТ ИМЕНИ БУФ») |
 
 Catalog names are not command names: `спис`, `отл`, `джип` etc. fall

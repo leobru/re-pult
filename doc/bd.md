@@ -10,9 +10,10 @@ All zone and memory addresses below are octal.
 | 027 (start) | БАНДИТ implementation | Loaded internally; no directly callable archive entry |
 | 030 | КТЛБД | Database catalog, non-executable; no callable archive entry |
 
-The implementation starts at 027; its exact active code extent is not
-established here. Zone 030 has the
-separate catalog role, not an executable BD subcommand overlay.
+The implementation occupies offsets 0001–1161 of zone 027, followed by
+padding and residual words. The complete zone has been reproduced from
+[re-bandit.asm](../re-bandit.asm); see the [engine analysis](bandit.md).
+Zone 030 contains the separate database catalog.
 On both source disks these correspond to zones 01026, 01027 and 01030.
 Their payloads are identical between 2148 and 2248 and are preserved in 2068.
 In zone 030, word 1677 contains the GOST name `КТЛБД`; the following words
@@ -63,7 +64,16 @@ of the callable archive catalog. Thus exposing the dispatcher at 026 does
 not require making БАНДИТ a callable file. The implementation and catalog
 zones remain outside callable catalog entries on reconstructed 2068.
 The integration tests verify dispatch and the catalog listing described below.
-Creation/modification of database records is not covered.
+Private-disk tests now cover creation, fixed-size writes, reads, duplicate
+rollback and deletion. MOD fails through a clobbered base register;
+multi-block records require a separate buffer page. See [bandit.md](bandit.md)
+and `make checkbandit` for exact conditions.
+
+The recovered [re-bd.asm](../re-bd.asm) reproduces **all 1024 words** of
+zone 01026 on both source volumes. `make checkbanditasm` assembles both
+sources with the historical BEMSH and checks complete zones, including
+padding and residual words. The sources were imported from
+`besm6.github.io/sources/mars/`.
 
 ## Observed `BD КТЛ` result on 2068
 

@@ -7,7 +7,7 @@
 #   make listings   build/<NAME>.lst for every image that executed in a session,
 #                   disassembled at the address it runs at
 #   make diff       catalog entries that differ between 2148 and 2248
-#   make vol        ~/.besm6/2250: 2248 with patches-2248.txt applied; pult.b6
+#   make vol        build/volumes/2250: patched 2248 used by pult.b6
 #                   boots from it (listings still come from the original 2248)
 #
 # syms/<NAME>.sym (disbesm6 symbol table) is used when present.
@@ -16,9 +16,10 @@ DIS      ?= disbesm6
 VOL      ?= 2248
 SESSIONS := $(basename $(notdir $(wildcard sessions/*.txt)))
 STAMPS   := $(SESSIONS:%=build/t-%/.done)
-PVOL     := $(HOME)/.besm6/2250
+PVOL     ?= build/volumes/2250
 # 7.25 MB geometry: offsets set by Э50 0112 (ФОРТ) are then taken as given
 DISPAKFLAGS ?= --725
+TRACE_TIMEOUT ?= 30
 
 all: listings
 
@@ -29,13 +30,19 @@ images/%/.done: tools/extract.py tools/gost.py
 
 vol: $(PVOL)
 $(PVOL): patches-2248.txt tools/patchvol.py
+	mkdir -p $(dir $@)
 	tools/patchvol.py patches-2248.txt 2248 $@
 
 traces: $(STAMPS)
-build/t-%/.done: sessions/%.txt pult.b6 $(PVOL) tools/phasetrace.py images/$(VOL)/.done
-	rm -rf build/t-$* $(HOME)/.besm6/input_queue; mkdir -p build
-	timeout 300 dispak $(DISPAKFLAGS) -t -t -q pult.b6 < $< 2>&1 | \
-	    tools/phasetrace.py build/t-$* images-$(VOL).txt > build/t-$*.summary
+checktraces: $(PVOL) images/$(VOL)/.done
+	$(PYTHON) tests/trace-session.py --dispak "$(DISPAK)"
+
+.PHONY: checktraces
+
+build/t-%/.done: sessions/%.txt pult.b6 $(PVOL) tools/trace-session.py tools/run-dispak.sh tools/phasetrace.py images/$(VOL)/.done
+	$(PYTHON) tools/trace-session.py $< build/t-$* --volume "$(PVOL)" \
+	    --catalog images-$(VOL).txt --dispak "$(DISPAK)" --source-disks "$(SOURCE_DISKS)" \
+	    --timeout $(TRACE_TIMEOUT) -- $(DISPAKFLAGS)
 	touch $@
 
 # Images seen in any session (evaluated after the traces exist).
@@ -124,6 +131,27 @@ pultresidents: tools/pult-residents.py tests/echolot-layout.py $(wildcard syms/*
 	$(PYTHON) tools/pult-residents.py --disassembler "$(DIS)"
 
 .PHONY: pultresidents
+
+pultreserves: tools/pult-reserves.py syms/ВЫЗОВЛ.sym
+	$(PYTHON) tools/pult-reserves.py --disassembler "$(DIS)"
+
+.PHONY: pultreserves
+
+lisp1012: tools/lisp-1012.py syms/ЛИСП-1012.sym tests/echolot-layout.py
+	$(PYTHON) tools/lisp-1012.py --disassembler "$(DIS)" --search-copies
+
+.PHONY: lisp1012
+
+upd: tools/upd.py tests/echolot-layout.py
+	$(PYTHON) tools/upd.py --disassembler "$(DIS)"
+
+.PHONY: upd
+
+checkvyzovl: 2068
+	$(PYTHON) tests/vyzovl.py --dispak "$(DISPAK)"
+	$(PYTHON) tests/vyzovl.py --dispak "$(DISPAK)" --compiler december
+
+.PHONY: checkvyzovl
 
 # АВТПАК has a relative driver at 052000 and a packet reader at 004000.
 avtpak: build/АВТПАК.lst build/АВТПАК-пакет.lst build/АВТПАК.dump
@@ -364,3 +392,25 @@ checkstruk: 2068
 	$(PYTHON) tests/struk.py --dispak "$(DISPAK)" --compiler december
 
 .PHONY: struk checkstruk
+
+# Exact BEMSH reconstruction of BD and its BANDIT database engine.
+checkbanditasm:
+	$(PYTHON) tools/build-bandit.py --dispak "$(DISPAK)"
+
+.PHONY: checkbanditasm
+
+checkbandit: 2068
+	$(PYTHON) tests/bandit.py --dispak "$(DISPAK)"
+	$(PYTHON) tests/bandit.py --dispak "$(DISPAK)" --safe-buffer
+
+.PHONY: checkbandit
+
+checkpasautoimports: 2068
+	$(PYTHON) tools/check-pasauto-imports.py --dispak "$(DISPAK)" --program ppr --program lazy --program pretty --program newedt --program print --program test
+	$(PYTHON) tools/check-pasauto-imports.py --dispak "$(DISPAK)" --program bilist --source pascal/bilist.pas
+	$(PYTHON) tools/check-pasauto-imports.py --dispak "$(DISPAK)" --program newedt --source pascal/newedt.pas
+
+checknewedt: checkpasautoimports
+	$(PYTHON) tests/newedt.py --dispak "$(DISPAK)"
+
+.PHONY: checkpasautoimports checknewedt

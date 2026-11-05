@@ -26,7 +26,8 @@ vol = os.path.basename(dst)
 with tempfile.TemporaryDirectory() as d:
     for z in sorted({t[0] for t in todo}):
         f = os.path.join(d, 'z')
-        run = dict(cwd=os.path.dirname(dst), check=True, stdout=subprocess.DEVNULL)
+        run = dict(cwd=os.path.dirname(dst), check=True, stdout=subprocess.DEVNULL,
+                   env=dict(os.environ, BESM6_PATH=os.path.abspath(os.path.dirname(dst))))
         subprocess.run(['besmtool', 'dump', vol, '--start=0%o' % z, '--length=1',
                         '--to-file=' + f], **run)
         b = bytearray(open(f, 'rb').read())

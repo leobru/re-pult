@@ -25,7 +25,7 @@ or present on reconstructed 2068.
 | Zone word(s) | Value / interpretation |
 |---|---|
 | 0000 | `0000000001400030`: one zone, logical unit 40, initial zone 0030 |
-| 0001 | `0000000003446031`: service word, not decoded here |
+| 0001 | `0000000003446031`: last slot 0031, lowest record-body offset 1623; free-slot flag clear |
 | 0002 | Zero; the first-block validation requires this word to be zero |
 | 0003 | `0000000000203677`: directory offset 1677, allocated length 0101 words |
 | 0004–0031 | Record-slot table: one packed descriptor per slot |
@@ -34,7 +34,7 @@ or present on reconstructed 2068.
 | 1677–1750 | 21 `(six-character GOST name, record reference)` pairs, 052 words |
 | 1751–1775 | Unused directory allocation, zero in this image |
 | 1776 | `052`: number of used directory words, not number of names |
-| 1777 | `01571`: footer service value; equals the size of gap 0032–1622, consistent with a free-word count (allocator updates not traced here) |
+| 1777 | `01571`: free-word count, equal to the size of gap 0032–1622; updated by the allocator and deletion routines |
 
 Directory allocation 1677 + 0101 reaches the end of the 02000-word block.
 The directory is bounded by its count, not by the first zero-name word.
@@ -61,9 +61,22 @@ body_words  = (slot_word & 03776000) >> 10
 ```
 
 All named catalog records here occupy **two words**. Their first word is
-record metadata, retained verbatim by the decoder; its date/author/flag
-bit fields have not been established by this OPEN trace. The second word
-is the database location:
+record metadata. The recovered engine's `date` and `decod1` routines establish
+its fields (bit positions below count from zero):
+
+- bits 0–14: original data length, excluding the metadata word;
+- bits 15–32: upper 18 bits returned by `Э50 0100` (account identifier);
+- bits 33–47: 15 packed date bits from `Э50 0114`.
+
+`BD ИНФ` displays four account digits and five date digits **DDMMy**,
+retaining only the last year digit. A private-volume run printed
+`КТЛБД       00001  0353 06096` and
+`БД7154      00001  0353 08096`; the decoded metadata agrees with both.
+Thus these record dates give September 6 and September 8 in a year ending
+in 6. The metadata alone does not determine the decade.
+`tools/bdcatalog.py --json` includes the fields as `metadata_fields`.
+The [engine analysis](bandit.md) describes creation and deletion.
+The second word is the database location:
 
 ```text
 zone  = location & 07777

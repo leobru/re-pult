@@ -27,6 +27,29 @@ The Pascal runtime АДСИС, its entry vector, files and memory are described 
 [doc/adsis.md](doc/adsis.md).
 The resident-page variants on 2148/2248 and their listings are indexed in
 [doc/pult-residents.md](doc/pult-residents.md).
+The known and unidentified parts of РЕЗРВ1/РЕЗРВ3, including JINN's МОСТ
+and the ВЫЗОВЛ LISP launcher, are listed in [doc/pult-reserves.md](doc/pult-reserves.md).
+The remaining programs and partial analyses are indexed in
+[doc/pult-remaining.md](doc/pult-remaining.md).
+The recovered [BD dispatcher](re-bd.asm) and [BANDIT engine](re-bandit.asm)
+reproduce all words of 2148/2248:01026–01027 (`make checkbanditasm`).
+[doc/bandit.md](doc/bandit.md) describes the engine, record allocation,
+linked fragments, metadata and suspicious MODIFY paths.
+`make checkbandit` verifies private database operations and reproduces the
+MOD failure; its multiblock scenario explicitly moves the private buffer.
+The March 2025 pasauto-re sources, including ЛЕС/PRETTY, ЛЕНТЯЙ, РРR,
+НОВРЕД, КПЕЧ and КБИЛИС, are described in
+[doc/pasauto-imports.md](doc/pasauto-imports.md).
+`make checknewedt` recompiles the sources and compares original/rebuilt
+editor output and saved archive contents.
+
+The UPD database library in 2148:01013–01025 is described in
+[doc/upd.md](doc/upd.md). `make upd` extracts eight BEMSH object modules,
+their entry tables and 803 surviving source/macro-expansion records.
+
+The recovered [ВЫЗОВЛ Pascal source](pascal/vyzovl.pas) loads Lisp from
+unit 66. `make checkvyzovl` compares its code and diagnostic behavior;
+[doc/vyzovl.md](doc/vyzovl.md) records two compiler-generated ADSIS differences.
 The retained АВТПАК module, its four-zone ITM assembler driver and ПАКЕТ
 command-chain interpreter are described in [doc/avtpak.md](doc/avtpak.md).
 The ПУЛЬТ launcher generator, its passport templates and generated loader
@@ -61,6 +84,7 @@ handlers are described in [doc/algol-new.md](doc/algol-new.md).
 ```sh
 make            # extract images, trace sessions/*.txt, write build/*.lst
 make diff       # catalog entries that differ between 2148 and 2248
+make checktraces # ALG compilation, timeout/error propagation, private archive checks
 make pusk       # static ПУСК listing and full zone dump, without dispak
 make nabl       # static НАБЛ listing at 056000 and full source zone dump
 make sboy       # static СБОЙ listing at 076000 and full source zone dump
@@ -68,6 +92,7 @@ make dai        # static ДАЙ listing, including batch-job and ФОРТ code
 make adsis      # АДСИС listing at 074000, source-zone dump and code/data map
 make checkadsisasm # assemble adsis.be; compare the complete ЗОНГП zone with disk
 make pultresidents # find resident variants on 2148/2248 and disassemble distinct images
+make pultreserves  # inventory РЕЗРВ1/РЕЗРВ3 and disassemble ВЫЗОВЛ
 make avtpak     # old АВТ driver at 052000 and ПАКЕТ reader at 004000
 make launchers  # ПУЛЬТ generator and the retained ПУЛЬТФ image
 make acpuk      # АЦПУ output-file viewer at 074000
@@ -93,6 +118,13 @@ tools/findpage.py 2148 2248        # zones resembling page 37
 for each zone of a multi-zone entry). `build/<NAME>.lst` is its listing at
 the address where it runs, seeded with the addresses it executed in the
 sessions. See AGENTS.md for what is known so far.
+
+Coverage sessions use `build/volumes/2250`, a private HOME and a private
+copy of the unit-50 archive. Each run saves `session.log` (instructions)
+and `terminal.txt` under `build/t-<session>/`. `TRACE_TIMEOUT` defaults
+to 30 seconds; a timeout or emulator/splitter failure stops Make without
+creating `.done`. The ALG session creates a file in `сис алг` mode and
+compiles it, printing 123. Bare `алг` reads an empty buffer indefinitely.
 `make pusk`, `make nabl`, `make sboy`, `make dai`, `make adsis`, `make avtpak`
 `make launchers` and `make acpuk`
 instead use explicit static entries and data

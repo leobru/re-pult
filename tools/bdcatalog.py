@@ -19,6 +19,17 @@ OFFSET = 0o1777
 FIELD = 0o3776000
 
 
+def record_metadata(word):
+    """Decode BANDIT's date/author/length word (date, decod1 routines)."""
+    date = word >> 33
+    # Packed DD M M Y: 2+4+1+4+4 bits; Y retains the last year digit.
+    digits = ((date >> 13) & 3, (date >> 9) & 15,
+              (date >> 8) & 1, (date >> 4) & 15, date & 15)
+    return dict(data_words=word & 0o77777,
+                account_prefix=f'{(word >> 17) & 0xffff:04X}',
+                date_digits=''.join(f'{n:X}' for n in digits))
+
+
 def decode(data):
     if len(data) != 6144:
         raise ValueError('expected one zone of 1024 six-byte words')
@@ -52,6 +63,7 @@ def decode(data):
                             reference=f'{reference:016o}', slot=f'{slot:03o}',
                             record_offset=f'{offset:04o}', record_words=f'{length:o}',
                             metadata=f'{metadata:016o}', location=f'{location:016o}',
+                            metadata_fields=record_metadata(metadata),
                             unit=f'{(location >> 12) & 0o77:02o}',
                             zone=f'{location & 0o7777:04o}', blocks=f'{location >> 18:03o}'))
     return dict(root=f'{root:016o}', unit=f'{(root >> 12) & 0o77:02o}',
