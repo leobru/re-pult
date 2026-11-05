@@ -399,6 +399,15 @@ checkbanditasm:
 
 .PHONY: checkbanditasm
 
+bdprivate: 2068
+	$(PYTHON) tools/build-bandit.py --dispak "$(DISPAK)" --private
+	$(PYTHON) tools/bd-private.py
+
+checkbdmod: bdprivate
+	$(PYTHON) tests/bd-mod.py --dispak "$(DISPAK)"
+
+.PHONY: bdprivate checkbdmod
+
 checkbandit: 2068
 	$(PYTHON) tests/bandit.py --dispak "$(DISPAK)"
 	$(PYTHON) tests/bandit.py --dispak "$(DISPAK)" --safe-buffer

@@ -37,6 +37,9 @@ reproduce all words of 2148/2248:01026–01027 (`make checkbanditasm`).
 linked fragments, metadata and suspicious MODIFY paths.
 `make checkbandit` verifies private database operations and reproduces the
 MOD failure; its multiblock scenario explicitly moves the private buffer.
+`make bdprivate` builds private BD/BANDIT with a working reverse-copy MOD;
+`make checkbdmod` verifies replacement, chained records and error paths
+described in [doc/bandit.md](doc/bandit.md).
 The March 2025 pasauto-re sources, including ЛЕС/PRETTY, ЛЕНТЯЙ, РРR,
 НОВРЕД, КПЕЧ and КБИЛИС, are described in
 [doc/pasauto-imports.md](doc/pasauto-imports.md).

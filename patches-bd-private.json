@@ -1,0 +1,20 @@
+{
+  "description": "Preserved the BD base register while calling BANDIT MOD",
+  "source": "re-bd.asm",
+  "source_before": "        пв      '22'(M4) should be (M16) ???",
+  "source_after": "        пв      '22'(М16)",
+  "patches": [
+    {
+      "zone": "026",
+      "word": "0470",
+      "old": "0900004c8012",
+      "new": "090000ec8012"
+    },
+    {
+      "zone": "026",
+      "word": "0546",
+      "old": "00000000001b",
+      "new": "00000000001a"
+    }
+  ]
+}

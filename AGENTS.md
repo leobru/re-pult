@@ -11,6 +11,13 @@ BD buffer default 2068:026:0546 from 033 to 032: page 33 otherwise overlaps
 the dispatcher. The safe-buffer case verifies all 1088 words of a linked
 record and its deletion. Source disks and reference 2068 remain unchanged.
 
+`make bdprivate` installs the private reverse-copy MODIF from bandit-mod.inc
+at 01162, reached through 00663; other entry addresses and footer stay fixed.
+Private BD uses M16 for the MOD call and buffer page 032. `make checkbdmod`
+checks single-word and 1088-word replacement, GET/reopen, address mode and
+error paths; metadata, directory, slots, free space and neighbors stay intact.
+Historical sources and reference disks remain unchanged.
+
 March 5, 2025 Pascal reconstructions from `pasauto-re/` are
 imported into `pascal/pasauto-2025/` (excluding pasauto.pas).
 See doc/pasauto-imports.md: ppr=РРR (Lisp formatter), lazy=ПАСЛ/ЛЕНТЯЙ,
